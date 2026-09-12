@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9dfd1f78aae5b5442acafdd02bf88c24, type: 3}
+  m_Name: Fish Config
+  m_EditorClassIdentifier: 
+  fishData:
+  - type: 2
+    displayName: "\u9752\u86D9"
+    prefabName: Frog
+    score: 10
+    damage: 6
+    moveSpeed: 2.4
+    radius: 0
+    scale: 1
+    color: {r: 0.55, g: 0.85, b: 0.45, a: 1}
+    minDepth: 0
+    maxDepth: 26
+    spawnWeight: 26
+  - type: 4
+    displayName: "\u9CA4\u9C7C"
+    prefabName: Carp
+    score: 20
+    damage: 10
+    moveSpeed: 1.8
+    radius: 0
+    scale: 1
+    color: {r: 0.98, g: 0.72, b: 0.32, a: 1}
+    minDepth: 0
+    maxDepth: 26
+    spawnWeight: 24
+  - type: 5
+    displayName: "\u7FE0\u9E1F"
+    prefabName: Kingfisher
+    score: 30
+    damage: 8
+    moveSpeed: 4.5
+    radius: 0
+    scale: 1
+    color: {r: 0.3, g: 0.65, b: 0.95, a: 1}
+    minDepth: 4
+    maxDepth: 26
+    spawnWeight: 12
+  - type: 1
+    displayName: "\u6CB3\u72F8"
+    prefabName: Beaver
+    score: 40
+    damage: 20
+    moveSpeed: 1.4
+    radius: 0
+    scale: 1
+    color: {r: 0.65, g: 0.45, b: 0.3, a: 1}
+    minDepth: 6
+    maxDepth: 26
+    spawnWeight: 10
+  - type: 4
+    displayName: "\u91D1\u9F99\u9C7C"
+    prefabName: Arowana
+    score: 45
+    damage: 14
+    moveSpeed: 2.6
+    radius: 0
+    scale: 1
+    color: {r: 0.95, g: 0.55, b: 0.25, a: 1}
+    minDepth: 8
+    maxDepth: 26
+    spawnWeight: 12
+  - type: 4
+    displayName: "\u6D77\u725B"
+    prefabName: Manatee
+    score: 35
+    damage: 26
+    moveSpeed: 0.9
+    radius: 0
+    scale: 1
+    color: {r: 0.6, g: 0.65, b: 0.75, a: 1}
+    minDepth: 8
+    maxDepth: 26
+    spawnWeight: 8
+  - type: 1
+    displayName: "\u5929\u9E45"
+    prefabName: Swan
+    score: 55
+    damage: 22
+    moveSpeed: 1.2
+    radius: 0
+    scale: 1
+    color: {r: 0.95, g: 0.95, b: 0.95, a: 1}
+    minDepth: 10
+    maxDepth: 26
+    spawnWeight: 8
+  - type: 0
+    displayName: "\u9CC4\u9F9F"
+    prefabName: SnappingTurtle
+    score: 65
+    damage: 32
+    moveSpeed: 1
+    radius: 0
+    scale: 1
+    color: {r: 0.45, g: 0.55, b: 0.35, a: 1}
+    minDepth: 12
+    maxDepth: 26
+    spawnWeight: 7
+  - type: 0
+    displayName: "\u9CC4\u9C7C"
+    prefabName: Crocodile
+    score: 90
+    damage: 45
+    moveSpeed: 1.6
+    radius: 0
+    scale: 1
+    color: {r: 0.35, g: 0.6, b: 0.35, a: 1}
+    minDepth: 16
+    maxDepth: 26
+    spawnWeight: 5
