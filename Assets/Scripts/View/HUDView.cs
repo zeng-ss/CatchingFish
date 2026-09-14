@@ -1,4 +1,3 @@
-using Config;
 using Core;
 using Model;
 using UnityEngine;
@@ -6,31 +5,13 @@ using UnityEngine.UI;
 
 namespace View
 {
-    /// <summary>
-    /// HUD 表现层：血条 / 分数 / 深度 / 渔获数量 / 操作提示。
-    ///
-    /// 严格只订阅事件 + 读取 Model，绝不反向调用 Controller，
-    /// 所以以后要做"血条飘字""屏幕震动"之类的表现，改这个文件就够了。
-    /// 所有引用都做了空判断，缺哪个 UI 元素都不会报错，方便分步搭界面。
-    /// </summary>
     public class HUDView : MonoBehaviour
     {
-        [Header("血量")] [SerializeField] private Image hpFill;
-
-        [SerializeField] private Text hpText;
-
-        [Header("分数")] [SerializeField] private Text scoreText;
-
-        [Header("深度")] [SerializeField] private Image depthFill;
-
-        [SerializeField] private Text depthText;
-
-        [Header("渔获")] [SerializeField] private Text catchText;
-
-        [Header("操作提示")] [SerializeField] private Text hintText;
-
+        [SerializeField] private Image hpFill, depthFill;
+        [SerializeField] private Text hpText, scoreText, depthText, catchText, hintText;
         [SerializeField] private GameObject hintRoot;
 
+        private GameMgr _gameMgr;
         private float _depthRatio;
 
         private void OnEnable()
@@ -38,8 +19,9 @@ namespace View
             EventMgr.Subscribe(GameEvent.HpChanged, OnHpChanged);
             EventMgr.Subscribe(GameEvent.ScoreChanged, OnScoreChanged);
             EventMgr.Subscribe(GameEvent.DepthChanged, OnDepthChanged);
-            EventMgr.Subscribe(GameEvent.CaughtChanged, OnCaughtChanged);
+            EventMgr.Subscribe(GameEvent.FishCaught, OnCaughtChanged);
             EventMgr.Subscribe(GameEvent.StateChanged, OnStateChanged);
+            EventMgr.Subscribe(GameEvent.GameStart, OnGameStart);
         }
 
         private void OnDisable()
@@ -47,123 +29,113 @@ namespace View
             EventMgr.Unsubscribe(GameEvent.HpChanged, OnHpChanged);
             EventMgr.Unsubscribe(GameEvent.ScoreChanged, OnScoreChanged);
             EventMgr.Unsubscribe(GameEvent.DepthChanged, OnDepthChanged);
-            EventMgr.Unsubscribe(GameEvent.CaughtChanged, OnCaughtChanged);
+            EventMgr.Unsubscribe(GameEvent.FishCaught, OnCaughtChanged);
             EventMgr.Unsubscribe(GameEvent.StateChanged, OnStateChanged);
+            EventMgr.Unsubscribe(GameEvent.GameStart, OnGameStart);
         }
 
         private void Start()
         {
-            // Start 一定晚于所有 Awake，这时 GameMgr 的初始数值已经就绪
+            _gameMgr = GameMgr.Instance;
             RefreshAll();
         }
 
-        /// <summary>从 Model 拉一次全量数据（事件漏收时也能自愈）。</summary>
-        public void RefreshAll()
-        {
-            if (!GameMgr.Exists || GameMgr.Instance.Data == null)
-            {
-                return;
-            }
+        #region Event
 
-            GameModel model = GameMgr.Instance.Data;
-
-            SetHp(model.Hp, model.MaxHp);
-            SetScore(model.Score);
-            SetCaught(model.CaughtCount, model.MaxCatch);
-            SetDepth(model.DepthRatio);
-            SetHint(GameMgr.Instance.State);
-        }
+        private void OnGameStart(object obj) => RefreshAll();
 
         private void OnHpChanged(object payload)
         {
-            if (payload is HpPayload hp)
-            {
-                SetHp(hp.Current, hp.Max);
-            }
+            if (payload is HpPayload hp) SetHp(hp.Current, hp.Max);
         }
 
         private void OnScoreChanged(object payload)
         {
-            if (payload is int score)
-            {
-                SetScore(score);
-            }
+            if (payload is int score) SetScore(score);
         }
 
         private void OnDepthChanged(object payload)
         {
-            if (payload is float ratio)
-            {
-                SetDepth(ratio);
-            }
+            if (payload is float ratio) SetDepth(ratio);
         }
 
         private void OnCaughtChanged(object payload)
         {
-            if (payload is CatchPayload catchInfo)
-            {
-                SetCaught(catchInfo.Current, catchInfo.Max);
-            }
+            if (payload is CatchPayload catchInfo) SetCaught(catchInfo.Current, catchInfo.Max);
         }
 
         private void OnStateChanged(object payload)
         {
-            if (payload is GameState state)
+            if (payload is GameState state) SetHint(state);
+        }
+
+        #endregion
+
+        #region SetUI
+
+        private void RefreshAll()
+        {
+            if (_gameMgr == null || _gameMgr.GModel == null)
             {
-                SetHint(state);
+                return;
             }
+
+            GameModel model = _gameMgr.GModel;
+            SetHp(model.Hp, model.MaxHp);
+            SetScore(model.Score);
+            SetCaught(model.CaughtCount, model.MaxCatch);
+            SetDepth(model.DepthRatio);
+            SetHint(_gameMgr.State);
         }
 
         private void SetHp(int current, int max)
         {
-            if (hpFill != null)
-            {
-                hpFill.fillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
-            }
-
-            if (hpText != null)
-            {
-                hpText.text = $"HP {current}/{max}";
-            }
+            SetBar(hpFill, max <= 0 ? 0f : (float)current / max);
+            hpText.text = $"HP {current}/{max}";
         }
 
-        private void SetScore(int score)
-        {
-            if (scoreText != null)
-            {
-                scoreText.text = $"SCORE {score}";
-            }
-        }
+        private void SetScore(int score) => scoreText.text = $"SCORE {score}";
 
-        private void SetCaught(int current, int max)
-        {
-            if (catchText != null)
-            {
-                catchText.text = $"FISH {current}/{max}";
-            }
-        }
+        private void SetCaught(int current, int max) => catchText.text = $"FISH {current}/{max}";
 
         private void SetDepth(float ratio)
         {
-            _depthRatio = Mathf.Clamp01(ratio);
+            _depthRatio = Sanitize(ratio);
+            SetBar(depthFill, _depthRatio);
+            float maxDepth = _gameMgr != null && _gameMgr.Config != null ? _gameMgr.Config.maxDepth : 1f;
+            float perMeter = _gameMgr != null && _gameMgr.Config != null ? _gameMgr.Config.depthPerMeter : 1f;
+            int meters = Mathf.RoundToInt(_depthRatio * maxDepth * perMeter);
+            depthText.text = $"DEPTH {meters}m";
+        }
 
-            if (depthFill != null)
+        /// <summary>
+        /// 设置进度条长度。
+        ///
+        /// 刻意**不用** Image.fillAmount：ugui 的 Filled / Sliced 网格生成在极端值下会算出
+        /// 非法顶点，Canvas 重建时就会刷 "Invalid AABB inAABB"。
+        /// 直接改 RectTransform 的 anchorMax.x 表达 0~1 的进度，等价、稳定、零副作用。
+        /// </summary>
+        private static void SetBar(Image bar, float ratio)
+        {
+            if (bar == null)
             {
-                depthFill.fillAmount = _depthRatio;
+                return;
             }
 
-            if (depthText != null)
-            {
-                float maxDepth = GameMgr.Exists ? GameMgr.Instance.Config.maxDepth : 1f;
-                float perMeter = GameMgr.Exists ? GameMgr.Instance.Config.depthPerMeter : 1f;
-                int meters = Mathf.RoundToInt(_depthRatio * maxDepth * perMeter);
-                depthText.text = $"DEPTH {meters}m";
-            }
+            Vector2 anchorMax = bar.rectTransform.anchorMax;
+            anchorMax.x = Sanitize(ratio);
+            bar.rectTransform.anchorMax = anchorMax;
+        }
+
+        /// <summary>把 NaN / Infinity 挡在 UI 之外——它们是 "Invalid AABB" 的直接来源。</summary>
+        private static float Sanitize(float value)
+        {
+            return float.IsNaN(value) || float.IsInfinity(value) ? 0f : Mathf.Clamp01(value);
         }
 
         private void SetHint(GameState state)
         {
-            string hint = state switch
+            var hint = state switch
             {
                 GameState.Ready => "长按鼠标开始下潜（A/D 也可以左右移动）",
                 GameState.CastingDown => "按住鼠标左右移动，躲开鱼群",
@@ -174,15 +146,10 @@ namespace View
                 _ => string.Empty,
             };
 
-            if (hintText != null)
-            {
-                hintText.text = hint;
-            }
-
-            if (hintRoot != null)
-            {
-                hintRoot.SetActive(!string.IsNullOrEmpty(hint));
-            }
+            hintText.text = hint;
+            hintRoot.SetActive(!string.IsNullOrEmpty(hint));
         }
+
+        #endregion
     }
 }

@@ -40,30 +40,24 @@ namespace GameEditor
                 return;
             }
 
-            // 旧版本把控制器全挂在 GameMgr 上，直接再跑一次会变成"两处各一份"重复驱动，先摘掉
-            StripLegacyControllers(gameMgr.gameObject);
-
             Transform worldRoot = FindTransform("BG");
-            Transform fishRoot = worldRoot != null ? worldRoot.Find("fishs") : null;
             Transform hookRoot = FindTransform("hook");
-
-            // 控制器各自挂到对应的物体上，GameMgr 只保存引用（Inspector 里一眼能看到谁管谁）
-            BGController bgCtrl = EnsureComponent<BGController>(worldRoot, "BG");
-            EnsureComponent<FishSpawner>(fishRoot, "BG/fishs");
-            FishController fishCtrl = EnsureComponent<FishController>(fishRoot, "BG/fishs");
-            HookController hookCtrl = EnsureComponent<HookController>(hookRoot, "hook");
 
             EnsureHookView(hookRoot);
 
             BuildHudCanvas();
             BuildResultCanvas();
 
-            WireGameMgr(gameMgr, bgCtrl, hookCtrl, fishCtrl);
+            WireGameMgr(gameMgr, worldRoot, hookRoot);
+
+            // 控制器现在都是纯 C# 类了，旧场景里挂在物体上的那几个组件已经失效，
+            // 统一清理掉，避免留下 Missing Script
+            CleanupMissingScripts();
 
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
 
-            Debug.Log("[捕鱼] 场景搭建完成：控制器已分发到 BG / hook / fishs 上，HUD 与结算界面已生成，GameMgr 引用已接好。");
+            Debug.Log("[捕鱼] 场景搭建完成：HUD 与结算界面已就绪，GameMgr 引用已接好，失效的旧组件已清理。");
             ReportSceneWiring();
         }
 
@@ -109,7 +103,6 @@ namespace GameEditor
 
                         if (facing.TryGetValue(prefabName, out Quaternion q))
                         {
-                            view.SetFaceRightEuler(q.eulerAngles);
                             changed = true;
                         }
 
@@ -143,34 +136,31 @@ namespace GameEditor
         {
             GameMgr gameMgr = Object.FindObjectOfType<GameMgr>();
             Transform worldRoot = FindTransform("BG");
-            Transform fishRoot = worldRoot != null ? worldRoot.Find("fishs") : null;
             Transform hookRoot = FindTransform("hook");
+
+            SerializedObject so = gameMgr != null ? new SerializedObject(gameMgr) : null;
+            SerializedProperty worldProp = so != null
+                ? so.FindProperty("worldRoot") ?? so.FindProperty("_worldRoot")
+                : null;
+            SerializedProperty hookProp = so != null
+                ? so.FindProperty("hookView") ?? so.FindProperty("_hookView")
+                : null;
 
             Debug.Log(
                 "[捕鱼] 场景检查：\n" +
-                $"- GameMgr                       : {(gameMgr != null ? "OK" : "缺失！")}\n" +
-                $"- BG                            : {(worldRoot != null ? "OK" : "缺失！")}\n" +
-                $"- BG/bgs                        : {(worldRoot != null && worldRoot.Find("bgs") != null ? "OK" : "缺失！")}\n" +
-                $"- BG/fishs                      : {(fishRoot != null ? "OK" : "缺失！")}\n" +
-                $"- hook                          : {(hookRoot != null ? "OK" : "缺失！")}\n" +
-                "- 控制器挂载位置：\n" +
-                $"    BGController   -> BG          : {Describe(worldRoot, typeof(BGController))}\n" +
-                $"    FishSpawner    -> BG/fishs    : {Describe(fishRoot, typeof(FishSpawner))}\n" +
-                $"    FishController -> BG/fishs    : {Describe(fishRoot, typeof(FishController))}\n" +
-                $"    HookController -> hook        : {Describe(hookRoot, typeof(HookController))}\n" +
-                $"    HookView       -> hook        : {Describe(hookRoot, typeof(HookView))}\n" +
-                $"- HUDCanvas                     : {(Object.FindObjectOfType<HUDView>() != null ? "OK" : "缺失，可执行菜单 2")}\n" +
-                $"- ResultCanvas                  : {(Object.FindObjectOfType<ResultPanel>() != null ? "OK" : "缺失，可执行菜单 2")}");
-        }
-
-        private static string Describe(Transform host, System.Type type)
-        {
-            if (host == null)
-            {
-                return "宿主缺失！";
-            }
-
-            return host.GetComponent(type) != null ? "OK" : "未挂载";
+                "- 场景物体：\n" +
+                $"    BG                  : {(worldRoot != null ? "OK" : "缺失！")}\n" +
+                $"    BG/bgs              : {(worldRoot != null && worldRoot.Find("bgs") != null ? "OK" : "缺失！")}\n" +
+                $"    BG/fishs            : {(worldRoot != null && worldRoot.Find("fishs") != null ? "OK" : "缺失！")}\n" +
+                $"    hook                : {(hookRoot != null ? "OK" : "缺失！")}\n" +
+                "- 仅有的 MonoBehaviour：\n" +
+                $"    GameMgr             : {(gameMgr != null ? "OK" : "缺失！")}\n" +
+                $"    HookView (hook)     : {(hookRoot != null && hookRoot.GetComponent<HookView>() != null ? "OK" : "缺失，可执行菜单 2")}\n" +
+                $"    HUDView             : {(Object.FindObjectOfType<HUDView>() != null ? "OK" : "缺失，可执行菜单 2")}\n" +
+                $"    ResultPanel         : {(Object.FindObjectOfType<ResultPanel>() != null ? "OK" : "缺失，可执行菜单 2")}\n" +
+                "- GameMgr 引用：\n" +
+                $"    worldRoot           : {(worldProp != null && worldProp.objectReferenceValue != null ? "OK" : "未接线，可执行菜单 2")}\n" +
+                $"    hookView            : {(hookProp != null && hookProp.objectReferenceValue != null ? "OK" : "未接线，可执行菜单 2")}");
         }
 
         // ------------------------------------------------------------------
@@ -211,54 +201,28 @@ namespace GameEditor
             return gameMgr;
         }
 
-        /// <summary>把组件挂到它"该在"的物体上；已经挂过就复用。</summary>
-        private static T EnsureComponent<T>(Transform host, string label) where T : Component
-        {
-            if (host == null)
-            {
-                Debug.LogError($"[捕鱼] 找不到物体 {label}，{typeof(T).Name} 没能挂上。");
-                return null;
-            }
-
-            T comp = host.GetComponent<T>();
-            if (comp == null)
-            {
-                comp = host.gameObject.AddComponent<T>();
-                Debug.Log($"[捕鱼] 已在 {label} 上挂载 {typeof(T).Name}。");
-            }
-
-            return comp;
-        }
-
         /// <summary>
-        /// 兼容旧版本：控制器曾经全部挂在 GameMgr 物体上。
-        /// 迁移到"各自挂在自己的物体上"之后，那些残留会造成重复驱动，这里统一摘掉。
+        /// 清理"脚本已经不存在"的组件。
+        /// 控制器从 MonoBehaviour 改成普通 C# 类之后，旧场景里挂在物体上的那批组件就失效了，
+        /// 不清掉会一直显示 Missing Script。
         /// </summary>
-        private static void StripLegacyControllers(GameObject gameMgrObject)
+        private static void CleanupMissingScripts()
         {
             int removed = 0;
-            removed += RemoveIfPresent<BGController>(gameMgrObject);
-            removed += RemoveIfPresent<HookController>(gameMgrObject);
-            removed += RemoveIfPresent<FishController>(gameMgrObject);
-            removed += RemoveIfPresent<FishSpawner>(gameMgrObject);
+
+            foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                Transform[] all = root.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < all.Length; i++)
+                {
+                    removed += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(all[i].gameObject);
+                }
+            }
 
             if (removed > 0)
             {
-                Debug.Log($"[捕鱼] 已从 GameMgr 物体上摘掉 {removed} 个旧版控制器" +
-                          "（它们现在各自挂在自己的物体上）。");
+                Debug.Log($"[捕鱼] 清理了 {removed} 个失效组件（Missing Script）。");
             }
-        }
-
-        private static int RemoveIfPresent<T>(GameObject go) where T : Component
-        {
-            T comp = go.GetComponent<T>();
-            if (comp == null)
-            {
-                return 0;
-            }
-
-            Object.DestroyImmediate(comp);
-            return 1;
         }
 
         private static void EnsureHookView(Transform hookRoot)
@@ -278,22 +242,21 @@ namespace GameEditor
             EditorUtility.SetDirty(view);
         }
 
-        private static void WireGameMgr(
-            GameMgr gameMgr,
-            BGController bgCtrl,
-            HookController hookCtrl,
-            FishController fishCtrl)
+        private static void WireGameMgr(GameMgr gameMgr, Transform worldRoot, Transform hookRoot)
         {
             SerializedObject so = new SerializedObject(gameMgr);
-            SetRef(so, "_bgCtrl", bgCtrl);
-            SetRef(so, "_hookCtrl", hookCtrl);
-            SetRef(so, "_fishCtrl", fishCtrl);
+            SetRef(so, "worldRoot", worldRoot);
+            SetRef(so, "hookView", hookRoot != null ? hookRoot.GetComponent<HookView>() : null);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>
+        /// 按字段名写引用。会自动兼容带/不带下划线前缀两种命名，
+        /// 避免重命名字段后场景里已经序列化好的引用悄悄失效。
+        /// </summary>
         private static void SetRef(SerializedObject so, string propertyName, Object value)
         {
-            SerializedProperty p = so.FindProperty(propertyName);
+            SerializedProperty p = so.FindProperty(propertyName) ?? so.FindProperty("_" + propertyName);
             if (p == null)
             {
                 Debug.LogWarning($"[捕鱼] {so.targetObject.GetType().Name} 上找不到字段 {propertyName}，跳过。");
@@ -321,13 +284,12 @@ namespace GameEditor
             EnsureFontBootstrap(root);
 
             // --- 血条 ---
-            Image hpBg = GetOrCreateImage(root, "HpBarBg", new Color(0.06f, 0.09f, 0.14f, 0.8f), GetBackgroundSprite());
+            Image hpBg = GetOrCreateImage(root, "HpBarBg", new Color(0.06f, 0.09f, 0.14f, 0.8f));
             SetAnchored(hpBg.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(40f, -40f), new Vector2(420f, 36f));
 
-            Image hpFill = GetOrCreateImage(hpBg.transform, "HpBarFill", new Color(0.92f, 0.28f, 0.28f), GetUiSprite());
-            Stretch(hpFill.rectTransform, 4f);
-            MakeFilled(hpFill);
+            Image hpFill = GetOrCreateImage(hpBg.transform, "HpBarFill", new Color(0.92f, 0.28f, 0.28f));
+            SetupBarFill(hpFill, 4f);
 
             Text hpText = GetOrCreateText(root, "HpText", "HP 100/100", 30, TextAnchor.MiddleLeft, Color.white);
             SetAnchored(hpText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
@@ -344,13 +306,12 @@ namespace GameEditor
                 new Vector2(-40f, -106f), new Vector2(560f, 48f));
 
             // --- 深度 ---
-            Image depthBg = GetOrCreateImage(root, "DepthBarBg", new Color(0.06f, 0.09f, 0.14f, 0.8f), GetBackgroundSprite());
+            Image depthBg = GetOrCreateImage(root, "DepthBarBg", new Color(0.06f, 0.09f, 0.14f, 0.8f));
             SetAnchored(depthBg.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
                 new Vector2(0f, 150f), new Vector2(640f, 22f));
 
-            Image depthFill = GetOrCreateImage(depthBg.transform, "DepthBarFill", new Color(0.32f, 0.76f, 1f), GetUiSprite());
-            Stretch(depthFill.rectTransform, 3f);
-            MakeFilled(depthFill);
+            Image depthFill = GetOrCreateImage(depthBg.transform, "DepthBarFill", new Color(0.32f, 0.76f, 1f));
+            SetupBarFill(depthFill, 3f);
 
             Text depthText = GetOrCreateText(root, "DepthText", "DEPTH 0m", 30, TextAnchor.MiddleCenter,
                 new Color(0.86f, 0.94f, 1f));
@@ -400,13 +361,12 @@ namespace GameEditor
             EnsureFontBootstrap(root);
 
             // 全屏遮罩，同时作为 panelRoot
-            Image overlayImage = GetOrCreateImage(root, "ResultRoot", new Color(0f, 0f, 0f, 0.72f), null);
-            overlayImage.type = Image.Type.Simple;
+            Image overlayImage = GetOrCreateImage(root, "ResultRoot", new Color(0f, 0f, 0f, 0.72f));
             overlayImage.raycastTarget = true;
             RectTransform overlay = overlayImage.rectTransform;
             Stretch(overlay);
 
-            Image panelImage = GetOrCreateImage(overlay, "Panel", new Color(0.07f, 0.15f, 0.25f, 0.97f), GetUiSprite());
+            Image panelImage = GetOrCreateImage(overlay, "Panel", new Color(0.07f, 0.15f, 0.25f, 0.97f));
             RectTransform panel = panelImage.rectTransform;
             SetAnchored(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 Vector2.zero, new Vector2(960f, 660f));
@@ -521,7 +481,12 @@ namespace GameEditor
             return CreateRect(parent, name);
         }
 
-        private static Image GetOrCreateImage(Transform parent, string name, Color color, Sprite sprite)
+        /// <summary>
+        /// 创建一个纯色 Image。**不使用 Sprite**：ugui 的 Sliced / Tiled / Filled 网格生成
+        /// 在极端尺寸下会产出非法顶点，那是 "Invalid AABB inAABB" 的常见来源。
+        /// 纯色矩形用 Type.Simple 最稳，UI 也依然干净。
+        /// </summary>
+        private static Image GetOrCreateImage(Transform parent, string name, Color color)
         {
             RectTransform rt = GetOrCreateRect(parent, name);
             Image image = rt.GetComponent<Image>();
@@ -530,11 +495,25 @@ namespace GameEditor
                 image = rt.gameObject.AddComponent<Image>();
             }
 
+            image.sprite = null;
+            image.type = Image.Type.Simple;
             image.color = color;
-            image.sprite = sprite;
-            image.type = sprite != null ? Image.Type.Sliced : Image.Type.Simple;
             image.raycastTarget = false;
             return image;
+        }
+
+        /// <summary>
+        /// 进度条的填充层：撑满父物体、上下留内边距。
+        /// 进度由 HUDView 在运行时改 anchorMax.x 表达，不用 Image.Filled。
+        /// </summary>
+        private static void SetupBarFill(Image image, float padding)
+        {
+            RectTransform rt = image.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0f, 0.5f);
+            rt.offsetMin = new Vector2(0f, padding);
+            rt.offsetMax = new Vector2(0f, -padding);
         }
 
         private static Text GetOrCreateText(Transform parent, string name, string content, int fontSize,
@@ -568,8 +547,8 @@ namespace GameEditor
                 image = rt.gameObject.AddComponent<Image>();
             }
 
-            image.sprite = GetUiSprite();
-            image.type = Image.Type.Sliced;
+            image.sprite = null;
+            image.type = Image.Type.Simple;
             image.color = new Color(0.20f, 0.56f, 0.90f, 1f);
             image.raycastTarget = true;
 
@@ -609,35 +588,11 @@ namespace GameEditor
             rt.offsetMax = new Vector2(-padding, -padding);
         }
 
-        /// <summary>把 Image 设成横向填充条（血条 / 深度条）。</summary>
-        private static void MakeFilled(Image image)
-        {
-            image.type = Image.Type.Filled;
-            image.fillMethod = Image.FillMethod.Horizontal;
-            image.fillOrigin = (int)Image.OriginHorizontal.Left;
-            image.fillAmount = 1f;
-
-            if (image.sprite == null)
-            {
-                Debug.LogWarning($"[捕鱼] {image.name} 没有 Sprite，填充条不会生效（Filled 模式需要 Sprite）。");
-            }
-        }
-
         private static Font GetDefaultFont()
         {
             // Unity 2022 起内置 Arial 已换成 LegacyRuntime.ttf，字体本身不含中文，
             // 运行时由 DynamicFontBootstrap 替换成系统字体，这里只是让编辑器里能预览。
             return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
-
-        private static Sprite GetUiSprite()
-        {
-            return AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        }
-
-        private static Sprite GetBackgroundSprite()
-        {
-            return AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd");
         }
 
         // ------------------------------------------------------------------

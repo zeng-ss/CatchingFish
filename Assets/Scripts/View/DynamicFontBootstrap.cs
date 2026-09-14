@@ -11,6 +11,10 @@ namespace View
     /// —— 之所以放在运行时而不是 Editor 里做：从系统字体创建的 Font 没有对应的资源文件，
     /// 在编辑器里赋值无法序列化进场景，运行时创建反而是最稳的。
     ///
+    /// 关键点：这份字体是运行时对象，销毁时机不可控。如果 Text 一直指着它，
+    /// 等它被销毁而 Canvas 又刚好重建，ugui 就会生成非法网格并刷 "Invalid AABB inAABB"。
+    /// 所以这里把原字体缓存下来，在 OnDestroy 里先换回去，再主动销毁运行时字体。
+    ///
     /// 正式项目更推荐 TextMeshPro + 预烘焙的中文字体图集（可打进 APK，不依赖系统字体）。
     /// </summary>
     [DefaultExecutionOrder(-200)]
@@ -37,34 +41,72 @@ namespace View
         [SerializeField]
         private int sampleFontSize = 32;
 
+        private Text[] _texts;
+        private Font[] _originalFonts;
+        private Font _runtimeFont;
+
         private void Awake()
         {
             Apply();
         }
 
+        private void OnDestroy()
+        {
+            // 先把 Text 换回原来的字体，再销毁运行时字体——
+            // 顺序反了就会留下"Text 指着已销毁字体"的状态
+            RestoreOriginalFonts();
+
+            if (_runtimeFont != null)
+            {
+                Destroy(_runtimeFont);
+                _runtimeFont = null;
+            }
+        }
+
         /// <summary>替换该物体下所有 legacy Text 的字体。</summary>
         public void Apply()
         {
-            Text[] texts = GetComponentsInChildren<Text>(true);
-            if (texts == null || texts.Length == 0)
+            _texts = GetComponentsInChildren<Text>(true);
+            if (_texts == null || _texts.Length == 0)
             {
                 return;
             }
 
-            Font font = Font.CreateDynamicFontFromOSFont(fontNames, sampleFontSize);
-            if (font == null)
+            _runtimeFont = Font.CreateDynamicFontFromOSFont(fontNames, sampleFontSize);
+            if (_runtimeFont == null)
             {
                 Debug.LogWarning("[DynamicFontBootstrap] 找不到可用的系统字体，中文可能显示为方块。");
                 return;
             }
 
-            font.name = "RuntimeCJK";
+            _runtimeFont.name = "RuntimeCJK";
 
-            for (int i = 0; i < texts.Length; i++)
+            // 缓存原字体，供销毁时还原
+            _originalFonts = new Font[_texts.Length];
+            for (int i = 0; i < _texts.Length; i++)
             {
-                if (texts[i] != null)
+                if (_texts[i] == null)
                 {
-                    texts[i].font = font;
+                    continue;
+                }
+
+                _originalFonts[i] = _texts[i].font;
+                _texts[i].font = _runtimeFont;
+            }
+        }
+
+        private void RestoreOriginalFonts()
+        {
+            if (_texts == null || _originalFonts == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _texts.Length && i < _originalFonts.Length; i++)
+            {
+                if (_texts[i] != null && _originalFonts[i] != null)
+                {
+                    _texts[i].font = _originalFonts[i];
                 }
             }
         }

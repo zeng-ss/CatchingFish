@@ -183,8 +183,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -720,8 +720,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 3
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 0
@@ -755,8 +755,8 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -6, y: -6}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: -6}
+  m_Pivot: {x: 0, y: 0.5}
 --- !u!1 &409655685
 GameObject:
   m_ObjectHideFlags: 0
@@ -767,7 +767,6 @@ GameObject:
   m_Component:
   - component: {fileID: 409655686}
   - component: {fileID: 409655687}
-  - component: {fileID: 409655688}
   m_Layer: 0
   m_Name: hook
   m_TagString: Untagged
@@ -809,19 +808,6 @@ MonoBehaviour:
   rodTipWorldYOverride: -9999
   shakeStrength: 0.12
   shakeDamp: 12
---- !u!114 &409655688
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 409655685}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc31d164c94f48fc99b78aa824765db2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _view: {fileID: 409655687}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1265,8 +1251,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -1376,8 +1362,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 785108025}
-  - component: {fileID: 785108027}
-  - component: {fileID: 785108026}
   m_Layer: 0
   m_Name: fishs
   m_TagString: Untagged
@@ -1409,33 +1393,6 @@ Transform:
   - {fileID: 438947824}
   m_Father: {fileID: 2093974346}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &785108026
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 785108024}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71279052d81342b1a11a7dd9d30ec59e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _spawner: {fileID: 0}
---- !u!114 &785108027
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 785108024}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b5251b20b0de426fb1e70f4a110256d1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  fishRoot: {fileID: 0}
-  actionPlaneWorldZ: 0
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -1598,9 +1555,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hpFill: {fileID: 1565208303}
+  depthFill: {fileID: 337996188}
   hpText: {fileID: 1654520472}
   scoreText: {fileID: 1285379393}
-  depthFill: {fileID: 337996188}
   depthText: {fileID: 1768483021}
   catchText: {fileID: 1273916789}
   hintText: {fileID: 927659506}
@@ -2452,9 +2409,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7f0ed167de34476b654de927fe5e44d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _bgCtrl: {fileID: 2093974347}
-  _hookCtrl: {fileID: 409655688}
-  _fishCtrl: {fileID: 785108026}
+  worldRoot: {fileID: 2093974346}
+  hookView: {fileID: 409655687}
 --- !u!4 &1539534506
 Transform:
   m_ObjectHideFlags: 0
@@ -2587,8 +2543,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 3
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 0
@@ -2622,8 +2578,8 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -8, y: -8}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: -8}
+  m_Pivot: {x: 0, y: 0.5}
 --- !u!1001 &1599285567
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2938,6 +2894,74 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &1709244399
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1709244402}
+  - component: {fileID: 1709244401}
+  - component: {fileID: 1709244400}
+  m_Layer: 0
+  m_Name: EventSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1709244400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709244399}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f231c4fb786f3946a6b90b886c48677, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SendPointerHoverToParent: 1
+  m_HorizontalAxis: Horizontal
+  m_VerticalAxis: Vertical
+  m_SubmitButton: Submit
+  m_CancelButton: Cancel
+  m_InputActionsPerSecond: 10
+  m_RepeatDelay: 0.5
+  m_ForceModuleActive: 0
+--- !u!114 &1709244401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709244399}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_FirstSelected: {fileID: 0}
+  m_sendNavigationEvents: 1
+  m_DragThreshold: 10
+--- !u!4 &1709244402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709244399}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1723309733
 GameObject:
   m_ObjectHideFlags: 0
@@ -3179,8 +3203,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -3400,8 +3424,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -3461,7 +3485,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2093974346}
-  - component: {fileID: 2093974347}
   m_Layer: 0
   m_Name: BG
   m_TagString: Untagged
@@ -3486,20 +3509,6 @@ Transform:
   - {fileID: 785108025}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2093974347
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2093974345}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f27394912d0ff5c46ba712f8932b8a3c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tilesRoot: {fileID: 1989413882}
-  fallbackTileWorldHeight: 10
 --- !u!1001 &7937914446234550741
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3590,3 +3599,4 @@ SceneRoots:
   - {fileID: 2093974346}
   - {fileID: 950223091}
   - {fileID: 1704897275}
+  - {fileID: 1709244402}

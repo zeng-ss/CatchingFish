@@ -11,7 +11,7 @@ namespace Config
     [CreateAssetMenu(menuName = "Fish/GameConfig", fileName = "Game Config")]
     public class GameConfig : ScriptableObject
     {
-        public const string ResourcePath = "config/Game Config";
+        private const string ResourcePath = "config/Game Config";
 
         private static GameConfig _cached;
 
@@ -22,7 +22,7 @@ namespace Config
         [Tooltip("鱼钩左右可移动范围 = 屏幕半宽 * 该比例")]
         public float hookXLimitRatio = 0.86f;
 
-        [Tooltip("不可操作时（满仓加速返回）鱼钩回中的速度")]
+        [Tooltip("满仓加速返回鱼钩回中的速度")]
         public float hookReturnSpeed = 9f;
 
         [Tooltip("自动测量钩子碰撞半径失败时的兜底值")]
@@ -78,10 +78,13 @@ namespace Config
         [Tooltip("最深处的刷鱼间隔（越深越密）")]
         public float spawnIntervalMin = 0.45f;
 
-        [Tooltip("在屏幕外多远处生成")]
-        public float spawnMargin = 2f;
+        [Tooltip("生成在屏幕外的最近距离")]
+        public float spawnMarginMin = 2f;
 
-        [Tooltip("超过屏幕外多远回收")]
+        [Tooltip("生成在屏幕外的最远距离（在最近和最远之间随机，避免鱼排成一条线）")]
+        public float spawnMarginMax = 5f;
+
+        [Tooltip("完全移出屏幕后，再往外走这么远才回收（避免鱼在边缘反复生成/回收）")]
         public float despawnMargin = 3f;
 
         [Tooltip("同屏最多存活多少条鱼（不含已抓住的）")]
@@ -90,26 +93,18 @@ namespace Config
         [Tooltip("每种鱼的预热对象池数量")]
         public int poolWarmCount = 3;
 
-        [Tooltip("鱼的左右游动范围 = 屏幕半宽 * 该比例")]
-        public float fishEdgeRatio = 0.92f;
-
         [Header("表现")]
         [Tooltip("1 世界单位显示为多少米（仅影响 HUD 文案）")]
         public float depthPerMeter = 1f;
-
-        // ==================================================================
-        // 由上面参数推导出来的分段，各控制器统一从这里取，不要各自硬编码
-        // ==================================================================
 
         /// <summary>抛钩段深度：鱼钩从起点走到屏幕中间所走的距离。</summary>
         public float CastDepth => Mathf.Max(0.01f, hookStartY - hookMiddleY);
 
         /// <summary>触底冲刺的起始深度。</summary>
-        public float FinalDiveStartDepth => Mathf.Max(CastDepth + 0.01f, maxDepth - finalDiveDepth);
+        public float FinalDiveStartDepth => Mathf.Max(CastDepth, maxDepth - finalDiveDepth);
 
         /// <summary>
-        /// 给定深度，世界需要滚动的距离。
-        /// 抛钩段（鱼钩自己在往下走）和触底冲刺段（背景停住让鱼钩探底）恒为 0。
+        /// 给定深度，世界需要滚动的距离
         /// </summary>
         public float WorldScrollAt(float depth)
         {
@@ -122,27 +117,11 @@ namespace Config
             return depth > CastDepth && depth < FinalDiveStartDepth;
         }
 
-        /// <summary>取配置（带缓存）；读不到会退回代码内默认值，保证工程永远能跑。</summary>
         public static GameConfig Get()
         {
-            if (_cached == null)
-            {
-                _cached = LoadOrDefault();
-            }
-
+            if (_cached != null) return _cached;
+            _cached = Resources.Load<GameConfig>(ResourcePath);
             return _cached;
-        }
-
-        public static GameConfig LoadOrDefault()
-        {
-            GameConfig cfg = Resources.Load<GameConfig>(ResourcePath);
-            if (cfg == null)
-            {
-                Debug.LogWarning($"[GameConfig] 未找到 Resources/{ResourcePath}，使用代码内默认参数。");
-                cfg = CreateInstance<GameConfig>();
-            }
-
-            return cfg;
         }
     }
 }

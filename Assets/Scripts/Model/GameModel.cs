@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Config;
+using Core;
 using UnityEngine;
 
 namespace Model
@@ -39,51 +40,72 @@ namespace Model
 
         public void Reset(int maxHp, int maxCatch, float maxDepth)
         {
-            MaxHp = Mathf.Max(1, maxHp);
-            MaxCatch = Mathf.Max(1, maxCatch);
-            MaxDepth = Mathf.Max(0.01f, maxDepth);
+            MaxHp = maxHp;
+            MaxCatch = maxCatch;
+            MaxDepth = maxDepth;
 
             Hp = MaxHp;
             Score = 0;
             Depth = 0f;
             _caught.Clear();
+
+            // 重置后立刻广播一遍初始值，HUD 才会马上刷新；
+            // 否则要等到第一次扣血/加分才更新，开局一直在显示上一局的数字。
+            EventMgr.Publish(GameEvent.HpChanged, new HpPayload
+            {
+                Current = Hp,
+                Max = MaxHp
+            });
+            EventMgr.Publish(GameEvent.ScoreChanged, Score);
+            EventMgr.Publish(GameEvent.FishCaught, new CatchPayload
+            {
+                Current = CaughtCount,
+                Max = MaxCatch
+            });
+            EventMgr.Publish(GameEvent.DepthChanged, DepthRatio);
         }
 
         public void SetDepth(float depth)
         {
             Depth = Mathf.Clamp(depth, 0f, MaxDepth);
+
+            // 深度是每帧都在变的连续量，HUD 的深度条靠这个事件驱动
+            EventMgr.Publish(GameEvent.DepthChanged, DepthRatio);
         }
 
         public int ApplyDamage(int damage)
         {
-            if (damage <= 0 || IsDead)
-            {
-                return 0;
-            }
-
+            if (IsDead) return 0;
             int before = Hp;
             Hp = Mathf.Max(0, Hp - damage);
+            EventMgr.Publish(GameEvent.HpChanged, new HpPayload
+            {
+                Current = Hp,
+                Max = MaxHp
+            });
             return before - Hp;
         }
 
         /// <summary>记一条渔获并加分</summary>
         /// <returns>返回 true 表示渔获已满，需要立刻加速收线</returns>
-        public bool AddCaught(FishData data)
+        public void AddCaught(FishData data)
         {
-            if (data == null || IsInventoryFull)
-            {
-                return IsInventoryFull;
-            }
+            if (data == null || IsInventoryFull) return;
 
             _caught.Add(new CaughtFish
             {
                 Type = data.type,
                 DisplayName = string.IsNullOrEmpty(data.displayName) ? data.prefabName : data.displayName,
-                Score = data.score,
+                Score = data.score
             });
 
-            Score += Mathf.Max(0, data.score);
-            return IsInventoryFull;
+            Score += data.score;
+            EventMgr.Publish(GameEvent.ScoreChanged, Score);
+            EventMgr.Publish(GameEvent.FishCaught, new CatchPayload
+            {
+                Current = CaughtCount,
+                Max = MaxCatch
+            });
         }
 
         public bool IsWin => !IsDead;
