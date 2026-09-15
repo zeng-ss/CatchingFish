@@ -14,7 +14,6 @@ namespace Config
         [SerializeField] private List<FishData> fishData = new();
 
         // ---- 运行时索引 ----
-        private readonly Dictionary<FishType, FishData> _fishDataDict = new();
         private readonly List<FishData> _rolled = new();
         private readonly List<int> _weights = new();
         private bool _indexed;
@@ -47,70 +46,35 @@ namespace Config
             return _cached;
         }
 
-        public FishData Get(FishType type)
-        {
-            EnsureIndex();
-            return _fishDataDict.GetValueOrDefault(type);
-        }
-
-        public FishData GetByPrefabName(string prefabName)
-        {
-            if (string.IsNullOrEmpty(prefabName))
-            {
-                return null;
-            }
-
-            EnsureIndex();
-            foreach (var data in fishData)
-            {
-                if (data != null && data.prefabName == prefabName)
-                {
-                    return data;
-                }
-            }
-
-            return null;
-        }
-
         /// <summary>
         /// 按权重挑一条鱼。
         /// </summary>
         public FishData PickByDepth(float roll)
         {
             EnsureIndex();
-            if (fishData == null || fishData.Count == 0)
-            {
-                return null;
-            }
+            if (fishData == null || fishData.Count == 0) return null;
 
             _rolled.Clear();
             _weights.Clear();
 
             foreach (var data in fishData)
             {
-                if (data is not { spawnWeight: > 0 } || string.IsNullOrEmpty(data.prefabName))
-                {
-                    continue;
-                }
-
+                if (data is not { spawnWeight: > 0 } || string.IsNullOrEmpty(data.prefabName)) continue;
                 _rolled.Add(data);
                 _weights.Add(data.spawnWeight);
             }
 
+            /*
             if (_rolled.Count == 0)
             {
                 // 深度区间没配好时的兜底：忽略深度限制
                 foreach (var data in fishData)
                 {
-                    if (data is not { spawnWeight: > 0 } || string.IsNullOrEmpty(data.prefabName))
-                    {
-                        continue;
-                    }
-
                     _rolled.Add(data);
                     _weights.Add(data.spawnWeight);
                 }
             }
+            */
 
             int index = Tool.MathUtil.PickWeighted(_weights, roll);
             return index < 0 ? null : _rolled[index];
@@ -126,24 +90,8 @@ namespace Config
 
         private void EnsureIndex()
         {
-            if (_indexed)
-            {
-                return;
-            }
-
+            if (_indexed) return;
             fishData ??= new List<FishData>();
-
-            _fishDataDict.Clear();
-            foreach (var data in fishData)
-            {
-                if (data == null)
-                {
-                    continue;
-                }
-
-                _fishDataDict[data.type] = data;
-            }
-
             _indexed = true;
         }
 
@@ -153,7 +101,6 @@ namespace Config
         }
     }
 
-    /// <summary>鱼种分类，决定它在玩法里的角色（危险 / 高价值 / 快速）。</summary>
     public enum FishType
     {
         刺猬鱼,
