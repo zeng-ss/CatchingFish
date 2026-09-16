@@ -9,23 +9,19 @@ namespace Tool
 
         public static T Load<T>(string path, Transform father = null) where T : Object
         {
-            //path = "Resources/" + path;
             if (string.IsNullOrEmpty(path))
             {
                 Debug.LogError("[ResourcesMgr] 加载路径不能为空！");
                 return null;
             }
 
+            // 缓存命中
             if (Cache.TryGetValue(path, out Object cachedAsset))
             {
-                if (typeof(T) == typeof(GameObject))
-                {
-                    return Object.Instantiate(cachedAsset, father) as T;
-                }
-
-                return cachedAsset as T;
+                return HandleAsset<T>(cachedAsset, father);
             }
 
+            // 首次加载
             T asset = Resources.Load<T>(path);
             if (asset is null)
             {
@@ -33,13 +29,19 @@ namespace Tool
                 return null;
             }
 
+            Cache.Add(path, asset); // 原始资源先入缓存
+            return HandleAsset<T>(asset, father);
+        }
+
+        // 统一处理：GameObject 实例化，其他直接返回
+        private static T HandleAsset<T>(Object asset, Transform father) where T : Object
+        {
             if (typeof(T) == typeof(GameObject))
             {
-                return Object.Instantiate(asset, father);
+                return Object.Instantiate(asset, father) as T;
             }
 
-            Cache.Add(path, asset);
-            return asset;
+            return asset as T;
         }
 
         public static void ClearCache()

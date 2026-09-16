@@ -64,18 +64,6 @@ namespace Config
                 _weights.Add(data.spawnWeight);
             }
 
-            /*
-            if (_rolled.Count == 0)
-            {
-                // 深度区间没配好时的兜底：忽略深度限制
-                foreach (var data in fishData)
-                {
-                    _rolled.Add(data);
-                    _weights.Add(data.spawnWeight);
-                }
-            }
-            */
-
             int index = Tool.MathUtil.PickWeighted(_weights, roll);
             return index < 0 ? null : _rolled[index];
         }

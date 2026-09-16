@@ -4,7 +4,6 @@ using Controller;
 using Model;
 using Tool;
 using UnityEngine;
-using UnityEngine.Serialization;
 using View;
 
 namespace Core

@@ -46,7 +46,7 @@ namespace Controller
 
             // 必须在移动鱼钩之前先把竿尖锚点量出来（只靠 Awake 的先后顺序不可靠）
             _view.Prepare();
-            _hook.Radius = _view.GetColliderRadius(_cfg.hookFallbackRadius);
+            _hook.Radius = _view.GetColliderRadius();
             DOTween.Init();
             ResetDive();
         }
@@ -70,12 +70,10 @@ namespace Controller
             _yTween = null;
             _phase = VerticalPhase.None;
             _hurtTimer = 0f;
-
             _visualY = _cfg.hookStartY;
             _hook.X = 0f;
             _hook.Y = _cfg.hookStartY;
             _hook.ClearCaught();
-
             ApplyTransform();
         }
 
@@ -231,10 +229,8 @@ namespace Controller
             }
         }
 
-        private static float TimeFor(float distance, float speed)
-        {
-            return Mathf.Max(0.08f, distance / Mathf.Max(0.01f, speed));
-        }
+        private static float TimeFor(float distance, float speed) =>
+            Mathf.Max(0.08f, distance / Mathf.Max(0.01f, speed));
 
         private void TweenY(float targetY, float duration, Ease ease)
         {
@@ -252,7 +248,7 @@ namespace Controller
 
             _hook.Y = _visualY;
             // 用实测的钩子包围盒刷新碰撞半径
-            _hook.Radius = _view.GetColliderRadius(_cfg.hookFallbackRadius);
+            _hook.Radius = _view.GetColliderRadius();
         }
     }
 }

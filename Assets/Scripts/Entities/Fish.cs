@@ -6,20 +6,15 @@ namespace Entities
 {
     /// <summary>
     /// 一条鱼的运行时实体 只保存逻辑状态
-    /// 位置/朝向都放在 <see cref="FishView"/> 的 Transform 上，
     /// </summary>
     public class Fish
     {
-        /// <summary>数值配置引用（只读，来自 FishConfig）。</summary>
         public FishData Data;
-
-        /// <summary>游动方向：1 向右，-1 向左。出生时定好，之后一路不回头。</summary>
+        // 游动方向：1 向右，-1 向左
         public int Direction = 1;
-
-        /// <summary>已被抓住，正挂在鱼钩上（不再参与游动/回收）。</summary>
+        // 已被抓住
         public bool IsCaught;
-
-        /// <summary>本次下潜是否已经撞过鱼钩，防止同一条鱼连续扣血。</summary>
+        // 本次下潜是否已经撞过鱼钩，防止同一条鱼连续扣血
         public bool HasHitHook;
 
         /// <summary>

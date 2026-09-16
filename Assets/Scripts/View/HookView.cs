@@ -122,16 +122,16 @@ namespace View
             bob != null ? bob.position : transform.position);
 
         /// <summary>钩子的碰撞半径。</summary>
-        public float GetColliderRadius(float fallback)
+        public float GetColliderRadius()
         {
             if (_bobRenderers == null || _bobRenderers.Length == 0)
             {
-                return fallback;
+                Debug.LogError("钩子 Render 为空");
+                return -1;
             }
 
             Bounds b = ColliderBounds;
-            float radius = Mathf.Max(b.extents.x, b.extents.y);
-            return radius > 0.0001f ? radius : fallback;
+            return Mathf.Max(b.extents.x, b.extents.y);
         }
 
         /// <summary>把鱼挂到钩子下面（保持世界位置和朝向，只缩小一点）。</summary>

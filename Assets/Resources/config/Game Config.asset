@@ -13,24 +13,25 @@ MonoBehaviour:
   m_Name: Game Config
   m_EditorClassIdentifier: 
   hookMoveSpeed: 7
-  hookRestY: 2.6
   hookXLimitRatio: 0.86
-  hookFallbackRadius: 0.25
   hookReturnSpeed: 9
-  catchSlotSpacing: 0.5
-  catchSlotScale: 0.7
+  hookStartY: 3.6
+  hookMiddleY: 2
+  hookBottomY: -3.8
+  maxDepth: 50
+  finalDiveDepth: 6
   descendSpeed: 5
   ascendSpeed: 4
   fastReturnSpeed: 18
-  maxDepth: 26
   maxHp: 100
   maxCatch: 6
   hurtCooldown: 0.35
+  catchSlotScale: 0.7
   spawnInterval: 0.8
   spawnIntervalMin: 0.45
-  spawnMargin: 2
-  despawnMargin: 3
-  maxFishAlive: 14
-  poolWarmCount: 3
-  fishEdgeRatio: 0.92
+  spawnMarginMin: 2
+  spawnMarginMax: 4
+  despawnMargin: 1
+  maxFishAlive: 20
+  poolWarmCount: 5
   depthPerMeter: 1

@@ -30,20 +30,16 @@ namespace Controller
             GameObject go = PoolMgr.Pop(data.prefabName);
             if (go == null) return null;
 
-            Transform t = go.transform;
-            t.SetParent(_root, false);
-            t.position = worldPosition;
+            go.transform.SetParent(_root, false);
+            go.transform.position = worldPosition;
 
             FishView view = go.GetComponent<FishView>();
             view.Init();
             view.SetScale(data.scale <= 0f ? 1f : data.scale);
-
             Fish fish = new Fish();
             fish.ResetForSpawn(data, direction);
-
             view.Bind(fish);
             view.SetDirection(fish.Direction);
-
             return fish;
         }
 
@@ -56,7 +52,6 @@ namespace Controller
             fish.IsCaught = false;
             GameObject go = fish.View.gameObject;
             fish.View.Unbind();
-
             EnsurePool(poolName);
             PoolMgr.Push(poolName, go);
         }
@@ -66,8 +61,7 @@ namespace Controller
         private void EnsurePool(string prefabName)
         {
             if (PoolMgr.HasPool(prefabName)) return;
-
-            int warm = _cfg != null ? Mathf.Max(1, _cfg.poolWarmCount) : 3;
+            int warm = Mathf.Max(1, _cfg.poolWarmCount);
             PoolMgr.CreatePool(prefabName, warm, FishConfig.GetPrefabPath(prefabName));
         }
     }

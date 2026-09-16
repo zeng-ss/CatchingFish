@@ -14,8 +14,8 @@ namespace Controller
         private readonly Vector3 _worldBasePos;
         private readonly Camera _cam;
 
-        private float _tileLocalHeight = 8f;
-        private float _scroll;
+        private float _tileLocalHeight;
+        private float _scroll; // 当前滚动值
 
         /// <param name="worldRoot">整体滚动的世界根节点。</param>
         /// <param name="tilesRoot">背景贴图容器。</param>
@@ -37,14 +37,7 @@ namespace Controller
             _tiles = CollectTiles(tilesRoot);
             MeasureTiles();
             LayoutTiles();
-            //Debug.Log($"[BGController] 背景贴图高度 {TileWorldHeight:F2} 世界单位，共 {_tiles.Length} 张。");
         }
-
-        public float Scroll => _scroll; // 当前世界已经滚动了多少，正值 = 世界上移 = 正在下潜
-
-        /// <summary>单张背景贴图在世界空间的高度，用来校准 finalDiveDepth。</summary>
-        private float TileWorldHeight =>
-            _tileLocalHeight * Mathf.Abs(_tilesRoot != null ? _tilesRoot.lossyScale.y : 1f);
 
         /// <summary>设置世界滚动量。GameMgr 每帧把当前深度换算后传进来。</summary>
         public void SetScroll(float offsetWorld)
@@ -53,7 +46,7 @@ namespace Controller
             _worldRoot.position = _worldBasePos + Vector3.up * _scroll;
         }
 
-        /// <summary>回到水面</summary>
+        // 回到水面
         public void ResetScroll() => SetScroll(0f);
 
         /// <summary>
@@ -82,6 +75,8 @@ namespace Controller
                 tile.localPosition = lp;
             }
         }
+
+        #region tiles
 
         private static Transform[] CollectTiles(Transform tilesRoot)
         {
@@ -144,5 +139,7 @@ namespace Controller
                 _tiles[i].localPosition = lp;
             }
         }
+
+        #endregion
     }
 }
