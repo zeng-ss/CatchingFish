@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
 using Core;
-using Model;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -29,17 +28,13 @@ namespace View
         private void OnEnable()
         {
             EventMgr.Subscribe(GameEvent.GameSettle, OnSettle);
-            EventMgr.Subscribe(GameEvent.GameStart, OnStartGame);
             panelRoot.SetActive(false);
         }
 
         private void OnDisable()
         {
             EventMgr.Unsubscribe(GameEvent.GameSettle, OnSettle);
-            EventMgr.Unsubscribe(GameEvent.GameStart, OnStartGame);
         }
-
-        private void OnStartGame(object obj) => panelRoot.SetActive(false);
 
         private void OnSettle(object payload)
         {
@@ -72,9 +67,8 @@ namespace View
             Dictionary<string, int> scoreByName = new Dictionary<string, int>();
             List<string> order = new List<string>();
 
-            for (int i = 0; i < settle.FishList.Count; i++)
+            foreach (var fish in settle.FishList)
             {
-                CaughtFish fish = settle.FishList[i];
                 string name = string.IsNullOrEmpty(fish.DisplayName) ? fish.Type.ToString() : fish.DisplayName;
 
                 if (countByName.TryAdd(name, 0))

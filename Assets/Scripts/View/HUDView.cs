@@ -1,5 +1,4 @@
 using Core;
-using Model;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,7 +20,6 @@ namespace View
             EventMgr.Subscribe(GameEvent.DepthChanged, OnDepthChanged);
             EventMgr.Subscribe(GameEvent.FishCaught, OnCaughtChanged);
             EventMgr.Subscribe(GameEvent.StateChanged, OnStateChanged);
-            EventMgr.Subscribe(GameEvent.GameStart, OnGameStart);
         }
 
         private void OnDisable()
@@ -31,18 +29,9 @@ namespace View
             EventMgr.Unsubscribe(GameEvent.DepthChanged, OnDepthChanged);
             EventMgr.Unsubscribe(GameEvent.FishCaught, OnCaughtChanged);
             EventMgr.Unsubscribe(GameEvent.StateChanged, OnStateChanged);
-            EventMgr.Unsubscribe(GameEvent.GameStart, OnGameStart);
-        }
-
-        private void Start()
-        {
-            _gameMgr = GameMgr.Instance;
-            RefreshAll();
         }
 
         #region Event
-
-        private void OnGameStart(object obj) => RefreshAll();
 
         private void OnHpChanged(object payload)
         {
@@ -72,21 +61,6 @@ namespace View
         #endregion
 
         #region SetUI
-
-        private void RefreshAll()
-        {
-            if (_gameMgr == null || _gameMgr.GModel == null)
-            {
-                return;
-            }
-
-            GameModel model = _gameMgr.GModel;
-            SetHp(model.Hp, model.MaxHp);
-            SetScore(model.Score);
-            SetCaught(model.CaughtCount, model.MaxCatch);
-            SetDepth(model.DepthRatio);
-            SetHint(_gameMgr.State);
-        }
 
         private void SetHp(int current, int max)
         {

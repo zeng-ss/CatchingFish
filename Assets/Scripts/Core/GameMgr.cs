@@ -24,6 +24,12 @@ namespace Core
         public GameState State => _state;
         public GameConfig Config => _cfg;
 
+        /// <summary>表现层按 id 来"拉"鱼的状态用。</summary>
+        public FishController FishCtrl => _fishCtrl;
+
+        /// <summary>表现层把抓到的鱼挂到钩子下面时用。</summary>
+        public HookView HookView => hookView;
+
         protected override void Awake()
         {
             base.Awake();
@@ -38,8 +44,14 @@ namespace Core
             Transform fishRoot = worldRoot != null ? worldRoot.Find("fishs") : null;
 
             _bgCtrl = new BGController(worldRoot, bgTiles, cam);
-            _hookCtrl = new HookController(hookView, cam);
+
+            // 钩子的碰撞半径要由表现层实测，所以先把表现层准备好再量
+            hookView.Prepare();
+            _hookCtrl = new HookController(GModel, cam, hookView.GetColliderRadius(), hookView.transform.position.z);
             _fishCtrl = new FishController(fishRoot, cam);
+
+            // 显示层持有控制层引用（View → Controller）
+            hookView.Bind(_hookCtrl);
         }
 
         private void Start()
@@ -94,7 +106,7 @@ namespace Core
 
                 case GameState.CastingDown:
                     Advance(dt, _cfg.descendSpeed, true);
-                    _hookCtrl.CheckHurt(GModel, _fishCtrl.Actives, dt);
+                    _hookCtrl.CheckHurt(_fishCtrl.Actives, dt);
                     if (GModel.IsDead)
                     {
                         ChangeState(GameState.Failed);
@@ -115,7 +127,7 @@ namespace Core
                     }
                     else
                     {
-                        _hookCtrl.CheckCatch(GModel, _fishCtrl.Actives);
+                        _hookCtrl.CheckCatch(_fishCtrl.Actives);
                         if (GModel.Depth <= 0f) ChangeState(GameState.Settlement);
                     }
 
@@ -152,9 +164,6 @@ namespace Core
 
             switch (next)
             {
-                case GameState.CastingDown:
-                    EventMgr.Publish(GameEvent.GameStart);
-                    break;
                 case GameState.Settlement or GameState.Failed:
                     EventMgr.Publish(GameEvent.GameSettle, new SettlePayload
                     {
@@ -171,7 +180,7 @@ namespace Core
         public void RestartGame()
         {
             // 被抓住的鱼先还回对象池，再清空钩子和全部存活鱼
-            _fishCtrl.RecycleCaught(_hookCtrl.Hook.Caught);
+            _fishCtrl.RecycleCaught(_hookCtrl.Caught);
             _hookCtrl.ResetDive();
             _fishCtrl.RecycleAll();
 

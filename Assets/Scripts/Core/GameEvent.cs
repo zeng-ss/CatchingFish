@@ -5,7 +5,6 @@ namespace Core
 {
     public enum GameEvent
     {
-        GameStart,
         StateChanged,
         DepthChanged,
         HpChanged,

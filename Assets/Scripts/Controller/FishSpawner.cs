@@ -1,17 +1,17 @@
 using Config;
-using Entities;
 using Tool;
 using UnityEngine;
-using View;
 
 namespace Controller
 {
+    /// <summary>
+    /// 鱼的工厂（控制层）：对象池的薄封装。
+    /// **不接触任何 View 类型**——它只管从池子里取/还 GameObject。
+    /// </summary>
     public class FishSpawner
     {
         private readonly Transform _root;
         private readonly GameConfig _cfg;
-
-        private int _nextId;
 
         public FishSpawner(Transform fishRoot)
         {
@@ -22,38 +22,32 @@ namespace Controller
 
         public FishConfig Config { get; }
 
-        /// <summary>从池子里取一条鱼放到指定世界坐标。池子取不到时返回 null</summary>
-        public Fish Spawn(FishData data, Vector3 worldPosition, int direction)
+        /// <summary>从池子里取一个鱼对象并激活。池子取不到时返回 false。</summary>
+        public bool Rent(string prefabName)
         {
-            if (data == null) return null;
-            EnsurePool(data.prefabName);
-            GameObject go = PoolMgr.Pop(data.prefabName);
-            if (go == null) return null;
+            if (string.IsNullOrEmpty(prefabName)) return false;
+
+            EnsurePool(prefabName);
+            GameObject go = PoolMgr.Pop(prefabName);
+            if (go == null) return false;
 
             go.transform.SetParent(_root, false);
-            go.transform.position = worldPosition;
-
-            FishView view = go.GetComponent<FishView>();
-            view.Init();
-            view.SetScale(data.scale <= 0f ? 1f : data.scale);
-            Fish fish = new Fish();
-            fish.ResetForSpawn(data, direction);
-            view.Bind(fish);
-            view.SetDirection(fish.Direction);
-            return fish;
+            return true;
         }
 
-        /// <summary>把鱼还回对象池。</summary>
-        public void Recycle(Fish fish)
+        /// <summary>把鱼对象还回池子。</summary>
+        public void Recycle(GameObject go, string prefabName)
         {
-            if (fish?.Data == null || fish.View == null) return;
+            if (go == null) return;
 
-            string poolName = fish.Data.prefabName;
-            fish.IsCaught = false;
-            GameObject go = fish.View.gameObject;
-            fish.View.Unbind();
-            EnsurePool(poolName);
-            PoolMgr.Push(poolName, go);
+            if (string.IsNullOrEmpty(prefabName))
+            {
+                go.SetActive(false);
+                return;
+            }
+
+            EnsurePool(prefabName);
+            PoolMgr.Push(prefabName, go);
         }
 
         // ------------------------------------------------------------------
@@ -61,7 +55,8 @@ namespace Controller
         private void EnsurePool(string prefabName)
         {
             if (PoolMgr.HasPool(prefabName)) return;
-            int warm = Mathf.Max(1, _cfg.poolWarmCount);
+
+            int warm = _cfg != null ? Mathf.Max(1, _cfg.poolWarmCount) : 3;
             PoolMgr.CreatePool(prefabName, warm, FishConfig.GetPrefabPath(prefabName));
         }
     }

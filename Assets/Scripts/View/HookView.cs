@@ -1,3 +1,6 @@
+using Config;
+using Controller;
+using Core;
 using Tool;
 using UnityEngine;
 
@@ -14,6 +17,26 @@ namespace View
     [DisallowMultipleComponent]
     public class HookView : MonoBehaviour
     {
+        private HookController _controller;
+
+        /// <summary>
+        /// 由组合根注入控制层（依赖方向 View → Controller）。
+        /// 只用它每帧"拉"鱼钩坐标——控制层完全不认识这个类，两者不会形成循环引用。
+        /// </summary>
+        public void Bind(HookController controller) => _controller = controller;
+
+        private void OnEnable()
+        {
+            EventMgr.Subscribe(GameEvent.FishHurt, OnFishHurt);
+        }
+
+        private void OnDisable()
+        {
+            EventMgr.Unsubscribe(GameEvent.FishHurt, OnFishHurt);
+        }
+
+        private void OnFishHurt(object payload) => PlayHurtFeedback();
+
         [Header("引用（留空自动在子物体里按名字查找）")] [SerializeField]
         private Transform rope;
 
@@ -169,6 +192,14 @@ namespace View
 
         private void LateUpdate()
         {
+            // 从控制层"拉"坐标：依赖方向是 View → Controller，控制层从不写 Transform
+            if (_controller != null)
+            {
+                Vector3 p = _controller.Position;
+                Vector3 self = transform.position;
+                transform.position = new Vector3(p.x, p.y, self.z);
+            }
+
             RefreshRope();
             RefreshShake();
         }
