@@ -80,6 +80,17 @@ namespace Config
             return depth > CastDepth && depth < FinalDiveStartDepth;
         }
 
+        // ==================================================================
+        // 开场 / 收场镜头
+        // ==================================================================
+
+        [Header("开场 / 收场镜头")]
+        [Tooltip("抛钩结束后，镜头下移到游玩高度的时长")]
+        public float cameraMoveDuration = 0.6f;
+
+        [Tooltip("结算时镜头加速回到开始画面的时长")]
+        public float cameraBackDuration = 0.5f;
+
         public static GameConfig Get()
         {
             if (_cached != null) return _cached;

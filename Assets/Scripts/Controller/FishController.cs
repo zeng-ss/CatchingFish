@@ -68,7 +68,7 @@ namespace Controller
             if (id < 0 || id >= _slots.Count) return null;
 
             FishRuntime slot = _slots[id];
-            return slot != null && slot.Alive ? slot : null;
+            return slot is { Alive: true } ? slot : null;
         }
 
         /// <summary>当前存活的数据槽（可能含 null），供钩子做碰撞判定。</summary>
@@ -127,32 +127,36 @@ namespace Controller
         {
             RecycleOffScreen();
 
+            // 只在**背景真的在滚动**时才补鱼。
+            // 这样 Ready（开始画面）和抛钩段都不会刷鱼——那时候镜头还停在"头部背景"上，
+            // 鱼会直接出现在开始画面里；触底冲刺 / 收钩出水段背景也是停的，同样不补。
             bool diving = state is GameState.CastingDown or GameState.ReelingUp;
             int alive = CountAlive();
-            bool wantSpawn = state == GameState.Ready
-                ? alive < Mathf.Max(3, _cfg.maxFishAlive / 2)
-                : diving && alive < _cfg.maxFishAlive;
+            bool wantSpawn = diving && scrollDir != 0 && alive < _cfg.maxFishAlive;
 
             if (wantSpawn)
             {
                 _timer -= dt;
                 if (_timer <= 0f)
                 {
-                    Spawn();
+                    Spawn(depth, scrollDir);
                     _timer = CurrentInterval(depth);
                 }
             }
 
-            MoveAll(dt);
+            MoveAll(dt, depth);
         }
 
-        private void MoveAll(float dt)
+        private void MoveAll(float dt, float depth)
         {
+            float scroll = _cfg.WorldScrollAt(depth);
             foreach (FishRuntime fish in _slots)
             {
                 if (fish == null || !fish.Alive || fish.IsCaught || fish.Data == null) continue;
-
-                fish.Position += Vector3.right * (fish.Direction * fish.Data.moveSpeed * dt);
+                fish.Position = new Vector3(
+                    fish.Position.x + fish.Direction * fish.Data.moveSpeed * dt,
+                    fish.BaseY + scroll,
+                    fish.Position.z);
             }
         }
 
@@ -197,7 +201,7 @@ namespace Controller
         ///   背景下移（上浮）→ 从屏幕上方进场
         ///   背景静止       → 从屏幕左右两侧进场，横向穿过
         /// </summary>
-        private void Spawn()
+        private void Spawn(float depth, int scrollDir)
         {
             FishData data = _spawner.Config.PickByDepth(Random.value);
             if (data == null) return;
@@ -210,7 +214,7 @@ namespace Controller
             Vector3 position;
             int direction;
 
-            switch (ScrollDirHint)
+            switch (scrollDir)
             {
                 case > 0:
                     position = new Vector3(Random.Range(-halfWidth, halfWidth), camY - halfHeight - margin, _planeZ);
@@ -230,21 +234,18 @@ namespace Controller
                 }
             }
 
-            int id = AllocateSlot(data, position, direction);
+            int id = AllocateSlot(data, position, direction, depth);
             if (id < 0) return;
 
             // 先登记"待认领"，再让对象池激活 GameObject——
             // FishView.OnEnable 会在 SetActive(true) 里同步触发，必须提前备好槽位。
             _pendingIds.Enqueue(id);
-            if (!_spawner.Rent(data.prefabName)) _pendingIds.Dequeue();
+            if (!_spawner.Rent(data.prefabName, position)) _pendingIds.Dequeue();
         }
-
-        /// <summary>当前背景滚动方向，由 GameMgr 每帧写入。</summary>
-        public int ScrollDirHint { get; set; }
 
         // ------------------------------------------------------------------
 
-        private int AllocateSlot(FishData data, Vector3 position, int direction)
+        private int AllocateSlot(FishData data, Vector3 position, int direction, float depth)
         {
             int id;
             if (_freeIds.Count > 0)
@@ -259,6 +260,7 @@ namespace Controller
 
             FishRuntime slot = _slots[id] ?? new FishRuntime();
             slot.Reset(data, position, Vector3.one * 0.5f, direction);
+            slot.BaseY = position.y - _cfg.WorldScrollAt(depth);
             slot.Alive = true;
             _slots[id] = slot;
 

@@ -61,33 +61,9 @@ namespace Tool
         /// 聚合一组 Renderer 的世界空间包围盒（碰撞判定与出屏回收都用它）。
         /// 用渲染器实际包围盒而不是配置里手填半径，模型缩放、蒙皮动画都不用管。
         /// </summary>
-        public static Bounds ComputeWorldBounds(Renderer[] renderers, Vector3 fallbackCenter)
+        public static Bounds ComputeWorldBounds(Renderer r)
         {
-            bool has = false;
-            Bounds result = new Bounds(fallbackCenter, Vector3.one * 0.5f);
-
-            if (renderers != null)
-            {
-                for (int i = 0; i < renderers.Length; i++)
-                {
-                    Renderer r = renderers[i];
-                    if (r == null || !r.enabled)
-                    {
-                        continue;
-                    }
-
-                    if (!has)
-                    {
-                        result = r.bounds;
-                        has = true;
-                    }
-                    else
-                    {
-                        result.Encapsulate(r.bounds);
-                    }
-                }
-            }
-
+            var result = r.bounds;
             return result;
         }
     }

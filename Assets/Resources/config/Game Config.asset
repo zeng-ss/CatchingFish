@@ -15,10 +15,10 @@ MonoBehaviour:
   hookMoveSpeed: 7
   hookXLimitRatio: 0.86
   hookReturnSpeed: 9
-  hookStartY: 3.6
+  hookStartY: 15
   hookMiddleY: 2
   hookBottomY: -3.8
-  maxDepth: 50
+  maxDepth: 30
   finalDiveDepth: 6
   descendSpeed: 5
   ascendSpeed: 4
@@ -35,3 +35,5 @@ MonoBehaviour:
   maxFishAlive: 20
   poolWarmCount: 5
   depthPerMeter: 1
+  cameraMoveDuration: 0.6
+  cameraBackDuration: 0.5

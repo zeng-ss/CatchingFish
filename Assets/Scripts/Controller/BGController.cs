@@ -16,6 +16,7 @@ namespace Controller
 
         private float _tileLocalHeight;
         private float _scroll; // 当前滚动值
+        private bool _laidOut; // 贴图是否已经重排过（第一次真正滚动时才排）
 
         /// <param name="worldRoot">整体滚动的世界根节点。</param>
         /// <param name="tilesRoot">背景贴图容器。</param>
@@ -36,7 +37,8 @@ namespace Controller
 
             _tiles = CollectTiles(tilesRoot);
             MeasureTiles();
-            LayoutTiles();
+            // 这里**不要**调 LayoutTiles()：一上来就重排会破坏美术摆好的"头部背景"（开始画面）。
+            // 推迟到第一次真正滚动时再排，见 Tick()。
         }
 
         /// <summary>设置世界滚动量。GameMgr 每帧把当前深度换算后传进来。</summary>
@@ -54,6 +56,19 @@ namespace Controller
         /// </summary>
         public void Tick()
         {
+            if (_tiles.Length == 0) return;
+
+            // 还没开始下潜（背景没滚动）时**不要碰贴图位置**，
+            // 否则开场画面里美术摆好的"头部背景"会被铺满视野的逻辑挤走。
+            // scroll 归零后同样不再动它，回到水面时保持原样。
+            if (_scroll <= 0.0001f) return;
+
+            if (!_laidOut)
+            {
+                _laidOut = true;
+                LayoutTiles();
+            }
+
             float total = _tileLocalHeight * _tiles.Length;
             float viewBottomLocal = ViewportUtil.WorldYToLocalY(_tilesRoot, ViewportUtil.ViewBottomWorldY(_cam));
             float viewTopLocal = ViewportUtil.WorldYToLocalY(_tilesRoot, ViewportUtil.ViewTopWorldY(_cam));
@@ -119,23 +134,17 @@ namespace Controller
         private void LayoutTiles()
         {
             int n = _tiles.Length;
-            if (n == 0)
-            {
-                return;
-            }
+            if (n == 0) return;
 
-            float center = 0f;
-            for (int i = 0; i < n; i++)
-            {
-                center += _tiles[i].localPosition.y;
-            }
-
-            center /= n;
+            // 以**第一张**贴图作者摆好的位置为锚点，后面的依次往上排。
+            // 不按"平均值居中"重排——那样第一张也会被挪走，
+            // 而第一张正是开始画面里露出来的那块背景。
+            float baseY = _tiles[0].localPosition.y;
 
             for (int i = 0; i < n; i++)
             {
                 Vector3 lp = _tiles[i].localPosition;
-                lp.y = center + (i - (n - 1) * 0.5f) * _tileLocalHeight;
+                lp.y = baseY + i * _tileLocalHeight;
                 _tiles[i].localPosition = lp;
             }
         }

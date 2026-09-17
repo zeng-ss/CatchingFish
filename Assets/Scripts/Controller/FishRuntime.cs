@@ -22,6 +22,13 @@ namespace Controller
         /// <summary>世界坐标（控制层自己模拟，不来自 Transform）。</summary>
         public Vector3 Position;
 
+        /// <summary>
+        /// 出生时的纵向基准 = 出生世界 Y - 当时的世界滚动量。
+        /// 鱼是 BG 的子物体，纵向位移由父物体带着走；控制层要算逻辑用的世界坐标时，
+        /// 用 BaseY + 当前滚动量还原即可，两边永远一致。
+        /// </summary>
+        public float BaseY;
+
         /// <summary>世界空间包围盒尺寸，注册时由表现层报上来。</summary>
         public Vector3 Size = Vector3.one * 0.5f;
 
@@ -30,6 +37,9 @@ namespace Controller
 
         /// <summary>已被抓住，挂在鱼钩上（不再参与游动/回收）。</summary>
         public bool IsCaught;
+
+        /// <summary>被抓住的次序（第几条）。表现层用它做"扇形展开"的初始倾角。</summary>
+        public int CatchSlot = -1;
 
         /// <summary>本次下潜是否已经撞过鱼钩，防止同一条鱼连续扣血。</summary>
         public bool HasHitHook;

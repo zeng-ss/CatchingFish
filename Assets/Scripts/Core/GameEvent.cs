@@ -1,5 +1,6 @@
 using Model;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Core
 {
@@ -9,7 +10,6 @@ namespace Core
         DepthChanged,
         HpChanged,
         ScoreChanged,
-        FishHurt,
         FishCaught,
         GameSettle
     }
@@ -26,6 +26,7 @@ namespace Core
     {
         public int Current;
         public int Max;
+        public Transform parent;
     }
 
     /// <summary>结算事件负载。</summary>
