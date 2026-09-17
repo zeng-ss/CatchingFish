@@ -18,7 +18,7 @@ MonoBehaviour:
   hookStartY: 15
   hookMiddleY: 2
   hookBottomY: -3.8
-  maxDepth: 30
+  maxDepth: 50
   finalDiveDepth: 6
   descendSpeed: 5
   ascendSpeed: 4
@@ -27,8 +27,8 @@ MonoBehaviour:
   maxCatch: 6
   hurtCooldown: 0.35
   catchSlotScale: 0.7
-  spawnInterval: 0.8
-  spawnIntervalMin: 0.45
+  spawnInterval: 0.1
+  spawnIntervalMin: 0.1
   spawnMarginMin: 2
   spawnMarginMax: 4
   despawnMargin: 1

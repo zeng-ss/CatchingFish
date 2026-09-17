@@ -79,6 +79,17 @@ namespace Controller
             _caught.Clear();
         }
 
+        /// <summary>
+        /// 战败收场：把鱼钩按**和镜头完全相同的时长与缓动**收回抛钩起点。
+        /// 正常结算是靠"上浮"把鱼钩带回去的；失败没有这个过程，
+        /// 只让镜头往上升的话，鱼钩会留在原地被甩出画面。
+        /// </summary>
+        public void ReelOutForSettle(float duration)
+        {
+            _phase = VerticalPhase.ReelingOut; // 标记成收钩段，语义上不再是下潜
+            TweenY(_cfg.hookStartY, Mathf.Max(0.01f, duration), Ease.Linear);
+        }
+
         /// <summary>每帧的横向控制。长按拖动时追指针；不可操作时自动回中。</summary>
         public void TickHorizontal(float dt, bool canControl, InputController input)
         {

@@ -218,9 +218,14 @@ namespace Core
             switch (next)
             {
                 case GameState.Settlement or GameState.Failed:
-                    // 正常结算是上浮时镜头就已经跟着回去了；
-                    // 只有"血量归零"没有上浮过程，这里补一次收场
-                    if (next == GameState.Failed) _camCtrl?.StartMove(true, _cfg.cameraBackDuration);
+                    // 正常结算是上浮时镜头和鱼钩就一起回去了；
+                    // 只有"血量归零"没有上浮过程，这里补一次收场 ——
+                    // 镜头和鱼钩必须用同一个时长，否则又变成只有镜头在动
+                    if (next == GameState.Failed)
+                    {
+                        _camCtrl?.StartMove(true, _cfg.cameraBackDuration);
+                        _hookCtrl?.ReelOutForSettle(_cfg.cameraBackDuration);
+                    }
                     EventMgr.Publish(GameEvent.GameSettle, new SettlePayload
                     {
                         IsWin = _gModel.IsWin,
