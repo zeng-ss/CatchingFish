@@ -27,13 +27,14 @@ namespace View
 
         private void OnEnable()
         {
-            EventMgr.Subscribe(GameEvent.GameSettle, OnSettle);
+            // 监听的是"结算动画播完"而不是 GameSettle —— 散开 + 飘字播完面板才出来
+            EventMgr.Subscribe(GameEvent.SettleAnimDone, OnSettle);
             panelRoot.SetActive(false);
         }
 
         private void OnDisable()
         {
-            EventMgr.Unsubscribe(GameEvent.GameSettle, OnSettle);
+            EventMgr.Unsubscribe(GameEvent.SettleAnimDone, OnSettle);
         }
 
         private void OnSettle(object payload)

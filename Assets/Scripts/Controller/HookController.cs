@@ -138,6 +138,9 @@ namespace Controller
             if (real <= 0) return;
             fish.HasHitHook = true;
             _hurtTimer = _cfg.hurtCooldown;
+
+            // 表现层订阅这个事件做受击闪烁（闪烁时长也取 hurtCooldown，节奏天然一致）
+            EventMgr.Publish(GameEvent.FishHurt, real);
         }
 
         /// <summary>

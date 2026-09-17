@@ -174,20 +174,6 @@ namespace Core
             TickCamera(speed, isDown);
         }
 
-        /// <summary>
-        /// 开场 / 收场镜头时序（下潜与上浮严格镜像）：
-        ///
-        ///   下潜：鱼钩先往下走，这一段**镜头和背景都不动**（画面还停在开始画面）；
-        ///         鱼钩落到"下边界往上 1/5 屏高"时镜头开始加速下移，
-        ///         时长 = 鱼钩走到 hookMiddleY 的剩余时间 → 两者同时到位；
-        ///         到位的那一刻 depth 超过 CastDepth，背景才开始滚。
-        ///
-        ///   上浮：背景往回滚，直到 depth 回到 CastDepth（背景停住、进入收钩出水段）；
-        ///         就在这一刻镜头**跟着鱼钩一起升回去**，时长同样取鱼钩升到 hookStartY 的剩余时间
-        ///         → 鱼钩回到初始位置的同时，镜头也回到开始画面。
-        ///
-        /// 这样上下完全对称，不会出现"鱼钩先上去、镜头再追"的割裂感。
-        /// </summary>
         private void TickCamera(float speed, bool isDown)
         {
             if (_camCtrl == null) return;
