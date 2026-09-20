@@ -122,7 +122,14 @@ namespace View
             if (payload is float ratio) SetOxygen(ratio);
         }
 
-        private void OnFinished(object payload) => finishRoot.SetActive(true);
+        private void OnFinished(object payload)
+        {
+            finishRoot.SetActive(true);
+            replayButton.transform.localScale = Vector3.zero;
+            startButton.transform.localScale = Vector3.zero;
+            replayButton.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
+            startButton.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack);
+        }
 
         private void OnReplayClicked()
         {

@@ -5,18 +5,6 @@ using UnityEngine;
 
 namespace View
 {
-    /// <summary>
-    /// 被勾住后的"悬挂 + 平滑转向 + 摆动"表现。**不创建任何 pivot 父物体。**
-    ///
-    /// 核心技巧：**"先转、再把嘴平移回钩子" == "绕嘴旋转"**。
-    /// 嘴是鱼的子物体，旋转后它的世界位置会跟着变；这时把 (钩子位置 - 嘴位置) 补到鱼身上，
-    /// 嘴就精确贴回钩子，视觉上鱼就是绕着自己的嘴在摆 —— 不需要额外的支点物体。
-    ///
-    /// 每帧三步：
-    ///   ① 用钩子横向速度算出摆角（钟摆）
-    ///   ② 姿态 = 平滑转向"朝上" × 摆动角
-    ///   ③ 把嘴平移到钩子上
-    /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)] // 晚于 HookView 执行，保证读到本帧最新的钩子位置
     public class FishHang : MonoBehaviour
@@ -65,6 +53,7 @@ namespace View
         private void Awake()
         {
             _animator = GetComponent<Animator>();
+            _animator.Play("Walk");
             _fish = GetComponent<FishView>();
         }
 
@@ -268,10 +257,8 @@ namespace View
             get
             {
                 if (_mouth != null) return _mouth;
-
                 _mouth = transform.Find("mouth");
                 if (_mouth == null) _mouth = transform.Find("Mouth");
-
                 return _mouth;
             }
         }
@@ -280,7 +267,6 @@ namespace View
         {
             Transform mouth = Mouth;
             if (mouth == null) return;
-
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(mouth.position, 0.08f);
         }
