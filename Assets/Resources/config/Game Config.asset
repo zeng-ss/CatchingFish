@@ -26,7 +26,6 @@ MonoBehaviour:
   maxHp: 100
   maxCatch: 10
   hurtCooldown: 0.35
-  catchSlotScale: 0.7
   spawnInterval: 0.1
   spawnIntervalMin: 0.1
   spawnMarginMin: 2

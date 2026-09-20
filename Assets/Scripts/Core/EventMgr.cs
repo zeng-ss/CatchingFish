@@ -4,6 +4,12 @@ using UnityEngine;
 
 namespace Core
 {
+    /// <summary>
+    /// 【事件总线】Model / Controller 发消息，View 订阅消息 —— 三层之间唯一的"反向"通道。
+    ///
+    /// 有了它，Model 不用认识界面，Controller 不用持有 View 引用；
+    /// 分发时单个订阅者抛异常也不会影响其他订阅者。
+    /// </summary>
     public static class EventMgr
     {
         private static readonly Dictionary<GameEvent, Action<object>> Channels = new();

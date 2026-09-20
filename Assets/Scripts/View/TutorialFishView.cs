@@ -3,15 +3,13 @@ using UnityEngine;
 namespace View
 {
     /// <summary>
-    /// 教程布景里的"道具鱼"。
+    /// 【表现层】教程布景里的"道具鱼"：只负责摆拍 —— 横向游动、被钩住后跟着钩子走。
     ///
-    /// **它不是游戏里的鱼**：只负责摆拍 —— 横向游动、被钩住后跟着钩子走。
-    /// Awake 里会把身上那套游戏组件（FishView / FishHang）关掉，因为它们的运行时要靠
-    /// <c>GameMgr.Instance</c> 找鱼槽位；教程的鱼要是去注册，就会污染玩家那一局的鱼群数据。
+    /// 它**不是游戏里的鱼**：Awake 里会把身上那套游戏组件（FishView / FishHang）关掉，
+    /// 因为它们的运行时要靠 `GameMgr.Instance` 找鱼槽位，教程的鱼去注册就会污染玩家那一局的数据。
     ///
-    /// 姿势/摆动沿用 <see cref="FishHang"/> 的两条规则，视觉上和真游戏一致：
-    ///   ① 扇形展开角 = FishHang.FanAngle(slot, step)（同一个静态方法，改一处两边都变）
-    ///   ② "先把嘴贴回钩子" == "绕嘴旋转"，所以不需要额外的 pivot 物体
+    /// 姿势与摆动沿用 <see cref="FishHang"/> 的规则（同一个 `FanAngle` + 同样的"绕嘴旋转"），
+    /// 所以教程和实机的观感一致。
     /// </summary>
     [DisallowMultipleComponent]
     public class TutorialFishView : MonoBehaviour
@@ -41,17 +39,8 @@ namespace View
         private void Awake()
         {
             // 摘掉游戏侧的行为，只留"外观"
-            FishView gameplay = GetComponent<FishView>();
-            if (gameplay != null)
-            {
-                gameplay.enabled = false;
-            }
-
-            FishHang hang = GetComponent<FishHang>();
-            if (hang != null)
-            {
-                hang.enabled = false;
-            }
+            if (GetComponent<FishView>() is { } gameplay) gameplay.enabled = false;
+            if (GetComponent<FishHang>() is { } hang) hang.enabled = false;
 
             _animator = GetComponent<Animator>();
         }
@@ -88,11 +77,6 @@ namespace View
         /// <summary>被钩住：开始跟着钩子走，并按扇形角展开。</summary>
         public void Attach(Transform hook, int slot)
         {
-            if (hook == null)
-            {
-                return;
-            }
-
             _hook = hook;
             _moving = false;
             _attached = true;
@@ -120,10 +104,7 @@ namespace View
 
         private void Update()
         {
-            if (!_moving || _attached)
-            {
-                return;
-            }
+            if (!_moving || _attached) return;
 
             Vector3 p = transform.position;
             p.x += _direction * SwimSpeed * Time.deltaTime;
@@ -132,16 +113,12 @@ namespace View
 
         private void LateUpdate()
         {
-            if (!_attached || _hook == null)
-            {
-                return;
-            }
+            if (!_attached) return;
 
             // ① 姿态 = 扇形倾角 × （鼻子朝上的定姿）
             transform.rotation = Quaternion.Euler(0f, 0f, _fanAngle) * _hangRot;
 
-            // ② 把嘴挪回钩子上。嘴是子物体，旋转后世界位置变了，
-            //    这一步等价于"绕嘴旋转"，所以不需要建 pivot 父物体。
+            // ② 把嘴挪回钩子上 == 绕嘴旋转（嘴是子物体，旋转后世界位置变了），不需要额外 pivot
             transform.position += _hook.position - MouthPosition;
         }
 

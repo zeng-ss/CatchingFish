@@ -9,7 +9,14 @@ using UnityEngine.UI;
 namespace View
 {
     /// <summary>
-    /// 结算面板。
+    /// 【表现层】结算面板。
+    ///
+    /// 订阅的是 `SettleAnimDone`（散开 + 飘字播完）而不是 `GameSettle` —— 先看动画，再开面板。
+    /// 面板里所有内容排成**一条 DOTween 时间轴**：面板弹入 → 渔获逐条插入 → 总分滚动 → 按钮浮现，
+    /// 节奏只在这一处调；`ResultItem` 只负责"造一段动画交出来"。
+    ///
+    /// 注意：脚本挂在要被隐藏的那一层上，所以订阅写在 `Awake`（绑对象生命周期）而不是
+    /// `OnEnable`/`OnDisable` —— 否则 `Hide()` 里那次 `SetActive(false)` 会把自己的订阅摘掉。
     /// </summary>
     public class ResultPanel : MonoBehaviour
     {
@@ -72,10 +79,10 @@ namespace View
 
             _seq = DOTween.Sequence();
 
-            // ② 面板弹出
+            // ① 面板弹出
             _seq.Append(panelRoot.transform.DOScale(Vector3.one, panelPopDuration).SetEase(Ease.OutBack, 1.4f));
 
-            // ③ 渔获一条条出现
+            // ② 渔获一条条出现（全部插入同一条时间轴，节奏只在一个地方调）
             IReadOnlyList<CaughtFish> list = settle.FishList;
             int count = list?.Count ?? 0;
             float itemsStart = _seq.Duration();
@@ -89,10 +96,10 @@ namespace View
 
             float itemsEnd = itemsStart + (count > 0 ? (count - 1) * itemStagger + itemDuration : 0f);
 
-            // ④ 总分滚动
+            // ③ 总分从 0 滚到实际分数
             _seq.Insert(itemsEnd, CountUpScore(settle.Score));
 
-            // ⑤ 最后才让"再来一局"浮现，视线被吸到按钮上
+            // ④ 最后才让"再来一局"浮现，视线自然落到按钮上
             Transform button = restartButton.transform;
             button.localScale = Vector3.zero;
             _seq.Insert(itemsEnd + scoreCountDuration, button.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack));
@@ -119,13 +126,11 @@ namespace View
         private ResultItem SpawnItem(CaughtFish fish)
         {
             GameObject go = ResourcesMgr.Load<GameObject>(itemPath, content);
-            if (go == null) return null;
-            ResultItem item = go.GetComponent<ResultItem>();
+            ResultItem item = go != null ? go.GetComponent<ResultItem>() : null;
             if (item == null)
             {
-                Debug.LogError(
-                    $"[ResultPanel] {itemPath} 上没有挂 ResultItem 脚本，请给预制体补上并拖好 nameTxt / scoreTxt / canvasGroup。");
-                Destroy(go);
+                Debug.LogError($"[ResultPanel] {itemPath} 不是合法的结算条目预制体（缺 ResultItem 脚本）。");
+                if (go != null) Destroy(go);
                 return null;
             }
 
@@ -153,10 +158,7 @@ namespace View
             return DOTween.To(() => value, v =>
             {
                 value = v;
-                if (scoreText != null)
-                {
-                    scoreText.text = $"总分 {Mathf.RoundToInt(v)}";
-                }
+                scoreText.text = $"总分 {Mathf.RoundToInt(v)}";
             }, total, scoreCountDuration).SetEase(Ease.OutQuad);
         }
     }

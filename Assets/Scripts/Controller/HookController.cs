@@ -10,8 +10,10 @@ using View;
 namespace Controller
 {
     /// <summary>
-    /// 鱼钩控制器
-    /// 一趟下潜由"鱼钩自己在动"和"背景在动"两段拼成，DOTween 负责其中的鱼钩位移：
+    /// 【控制层】鱼钩。持有 Model（扣血、记渔获）与同层的 FishController（按 id 查鱼），
+    /// **不认识任何 View** —— 位置由 View 每帧来读 `Position`。
+    ///
+    /// 一趟下潜由"鱼钩自己在动"和"背景在动"两段拼成，纵向按深度分成六段（DOTween 负责鱼钩位移）：
     ///
     ///   ① 抛钩 Casting        深度 0 → CastDepth            背景不动，鱼钩落到屏幕中间
     ///   ② 常规下潜 Cruising    深度 → FinalDiveStartDepth    鱼钩停中间，背景滚动

@@ -1,53 +1,38 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Tool
 {
+    /// <summary>
+    /// 【工具层】Resources 加载 + 缓存。
+    /// 表里的资源只 `Resources.Load` 一次，之后都走缓存；
+    /// 传了 parent 且资源是 GameObject 时顺便实例化并挂到 parent 下。
+    /// </summary>
     public static class ResourcesMgr
     {
         private static readonly Dictionary<string, Object> Cache = new();
 
-        public static T Load<T>(string path, Transform father = null) where T : Object
+        public static T Load<T>(string path, Transform parent = null) where T : Object
         {
             if (string.IsNullOrEmpty(path))
             {
-                Debug.LogError("[ResourcesMgr] 加载路径不能为空！");
+                Debug.LogError("[ResourcesMgr] 加载路径不能为空。");
                 return null;
             }
 
-            // 缓存命中
-            if (Cache.TryGetValue(path, out Object cachedAsset))
+            if (!Cache.TryGetValue(path, out Object asset))
             {
-                return HandleAsset<T>(cachedAsset, father);
+                asset = Resources.Load<T>(path);
+                if (asset == null)
+                {
+                    Debug.LogError($"[ResourcesMgr] 加载失败：{path}（{typeof(T).Name}）");
+                    return null;
+                }
+
+                Cache.Add(path, asset);
             }
 
-            // 首次加载
-            T asset = Resources.Load<T>(path);
-            if (asset is null)
-            {
-                Debug.LogError($"[ResourcesMgr] 加载资源失败！路径: {path}，类型: {typeof(T).Name}");
-                return null;
-            }
-
-            Cache.Add(path, asset); // 原始资源先入缓存
-            return HandleAsset<T>(asset, father);
-        }
-
-        // 统一处理：GameObject 实例化，其他直接返回
-        private static T HandleAsset<T>(Object asset, Transform father) where T : Object
-        {
-            if (typeof(T) == typeof(GameObject))
-            {
-                return Object.Instantiate(asset, father) as T;
-            }
-
-            return asset as T;
-        }
-
-        public static void ClearCache()
-        {
-            Cache.Clear();
-            Resources.UnloadUnusedAssets();
+            return asset is GameObject prefab ? Object.Instantiate(prefab, parent) as T : asset as T;
         }
     }
 }

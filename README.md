@@ -2,9 +2,33 @@
 
 Unity **2022.3.52f1** + **URP** + **DOTween**，主场景 `Assets/Scenes/GameScene.unity`。
 
-一个"下潜躲鱼、上浮抓鱼"的 2D 横版捕鱼小游戏。这个 Demo 重点展示的是**怎么把玩法逻辑、表现、
-界面和美术资源都用一套可维护的结构组织起来**：MVC 单向依赖、事件总线、状态机、对象池、数据驱动，
+一个"下潜躲鱼、上浮抓鱼"的 2D 横版捕鱼小游戏。重点展示**怎么把玩法逻辑、表现、界面和美术资源
+用一套可维护的结构组织起来**：MVC 单向依赖、事件总线、状态机、对象池、数据驱动，
 以及"没有美术资源时用代码把资源造出来"。
+
+---
+
+## 〇、MVC 分层一览（先看这张表）
+
+| 层 | 职责 | 代表文件 | 允许依赖谁 |
+| --- | --- | --- | --- |
+| **Model**（数据） | 一局的数值：氧气 / 深度 / 分数 / 渔获。数值一变就发事件 | `GameModel` | 只依赖 `Config` 与事件总线，**不引用任何 MonoBehaviour** |
+| **Controller**（逻辑） | 鱼钩分段、鱼群模拟与回收、背景滚动、对象池。构造函数注入依赖 | `HookController` `FishController` `BGController` `FishSpawner` `InputController` | 依赖 Model 与同层，**不认识任何 View** |
+| **View**（表现） | 把控制器算出来的状态贴到 Transform / UI 上；订阅事件刷界面 | `HookView` `FishView` `FishHang` `HUDView` `ResultPanel` `TutorialPanel` | 依赖 Controller（每帧"拉"状态）+ 事件总线 |
+| **入口 / 组合根** | 唯一驱动控制器的地方：创建依赖、绑引用、跑状态机 | `GameMgr` | 认识所有层，但只暴露两个 View 引用 |
+| **工具 / 配置** | 与业务无关的纯函数、对象池、两张 SO 数据表 | `MathUtil` `ViewportUtil` `PoolMgr` `GameConfig` `FishConfig` | 谁都能用，自己不依赖别人 |
+
+依赖方向只有两条，代码里严格保持：
+
+```
+   Model ◄── Controller ◄── View            View ──► Controller（每帧读状态）
+```
+
+- **Controller 从不引用、不写任何 View**：它只更新自己的纯数据（`FishRuntime` 里没有 Transform、没有 FishView）。
+- **View 与控制层靠"槽位 id"关联**：`FishView.Register()` 领 id → 每帧 `Get(id)` → 控制层回收后自己 `Release()`。
+- **跨层通信只走事件总线**（`EventMgr`）：Model / Controller 广播，View 订阅，谁都拿不到对方的引用。
+
+> 每个脚本的类注释第一行都标了所属层级（如 `【表现层】`、`【控制层】`），打开文件就能对上这张表。
 
 ---
 
@@ -101,7 +125,9 @@ Unity Trigger 碰撞、程序化纹理生成。
 
 ---
 
-## 四、架构
+## 四、架构细节
+
+### 分层与依赖
 
 ```
         ┌──────────── 依赖方向只有两条 ────────────┐

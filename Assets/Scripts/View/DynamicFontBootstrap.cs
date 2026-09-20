@@ -4,17 +4,14 @@ using UnityEngine.UI;
 namespace View
 {
     /// <summary>
-    /// 运行时中文字体修复。
+    /// 【表现层】运行时中文字体修复。
     ///
-    /// Unity 内置的 LegacyRuntime/Arial 不含中文字形，用 legacy UI Text 写中文会显示成方块。
-    /// 这个组件在 Awake 时用系统字体创建一份动态字体，替换掉 Canvas 下所有 Text 的字体。
-    /// —— 之所以放在运行时而不是 Editor 里做：从系统字体创建的 Font 没有对应的资源文件，
-    /// 在编辑器里赋值无法序列化进场景，运行时创建反而是最稳的。
+    /// Unity 内置的 LegacyRuntime / Arial 不含中文字形，用 legacy UI Text 写中文会显示成方块；
+    /// 这里在 Awake 时用系统字体创建一份动态字体，替换掉本 Canvas 下所有 Text 的字体。
+    /// 放在运行时而不是 Editor：从系统字体创建的 Font 没有资源文件，编辑器里赋值无法序列化进场景。
     ///
-    /// 关键点：这份字体是运行时对象，销毁时机不可控。如果 Text 一直指着它，
-    /// 等它被销毁而 Canvas 又刚好重建，ugui 就会生成非法网格并刷 "Invalid AABB inAABB"。
-    /// 所以这里把原字体缓存下来，在 OnDestroy 里先换回去，再主动销毁运行时字体。
-    ///
+    /// 注意：这份字体是运行时对象，销毁时机不可控。若 Text 一直指着它，等它被销毁而 Canvas 又刚好重建，
+    /// ugui 就会生成非法网格并刷 "Invalid AABB inAABB"。所以这里先换回原字体再销毁运行时字体。
     /// 正式项目更推荐 TextMeshPro + 预烘焙的中文字体图集（可打进 APK，不依赖系统字体）。
     /// </summary>
     [DefaultExecutionOrder(-200)]

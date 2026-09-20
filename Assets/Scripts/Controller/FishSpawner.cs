@@ -5,8 +5,8 @@ using UnityEngine;
 namespace Controller
 {
     /// <summary>
-    /// 鱼的工厂（控制层）：对象池的薄封装。
-    /// **不接触任何 View 类型**——它只管从池子里取/还 GameObject。
+    /// 【控制层】鱼的工厂：对象池的薄封装。
+    /// 只管从池子里取 / 还 GameObject，不接触任何 View 类型，也不管鱼怎么动。
     /// </summary>
     public class FishSpawner
     {

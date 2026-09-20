@@ -42,8 +42,6 @@ namespace Config
 
         [Tooltip("两次扣血之间的最小间隔")] public float hurtCooldown = 0.35f;
 
-        [Tooltip("挂在钩上的鱼的缩放")] public float catchSlotScale = 0.7f;
-
         [Header("刷鱼")] [Tooltip("起始刷鱼间隔")] public float spawnInterval = 0.55f;
 
         [Tooltip("最深处的刷鱼间隔")] public float spawnIntervalMin = 0.32f;

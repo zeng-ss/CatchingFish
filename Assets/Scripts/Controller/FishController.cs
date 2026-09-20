@@ -8,12 +8,16 @@ using UnityEngine;
 namespace Controller
 {
     /// <summary>
-    /// 鱼群管理（控制层）：**只在纯数据上模拟**——生成位置、游动、出屏回收全部算在
+    /// 【控制层】鱼群管理。**只在纯数据上模拟**：生成位置、横向游动、出屏回收全部算在
     /// <see cref="FishRuntime"/> 里，控制层从头到尾不持有任何 View。
     ///
-    /// 表现层 FishView 自己被启用时来 <c>Register</c> 领一个 id，每帧用 <c>Get(id)</c> 拉状态；
-    /// 被回收时由控制层标记 <c>Alive = false</c>，表现层看到后自己回对象池。
-    /// 依赖方向始终是 View → Controller。
+    /// 依赖方向 View → Controller：表现对象出生时来 `Register` 领一个 id，之后每帧用 `Get(id)` 拉状态；
+    /// 控制层要回收它就把槽位标成 `Alive = false`，表现层看到后自己回对象池。
+    ///
+    /// 数据结构（都为了 O(1)）：
+    ///   `_slots`      槽位表，下标就是 id，按 id 取鱼不用查找
+    ///   `_freeIds`    空闲 id 队列，回收的 id 立刻能被下一条鱼复用
+    ///   `_pendingIds` 待认领队列，控制层先备好数据，表现对象出生时按顺序来领
     /// </summary>
     public class FishController
     {
@@ -71,17 +75,12 @@ namespace Controller
             return slot is { Alive: true } ? slot : null;
         }
 
-        /// <summary>当前存活的数据槽（可能含 null），供钩子做碰撞判定。</summary>
-        public IReadOnlyList<FishRuntime> Actives => _slots;
-
         /// <summary>把钩子上那些鱼的数据槽标死（重开一局时用）。</summary>
         public void RecycleCaught(IReadOnlyList<FishRuntime> caught)
         {
-            if (caught == null) return;
-
             foreach (FishRuntime fish in caught)
             {
-                if (fish != null) fish.Alive = false;
+                fish.Alive = false;
             }
         }
 
@@ -127,13 +126,10 @@ namespace Controller
         {
             RecycleOffScreen();
 
-            // 补鱼的条件：
-            //   ① 在玩（下潜 / 上浮）；
-            //   ② 要么背景在滚（常规段），要么已经潜下去了但背景停住（触底冲刺 / 收线起钩）——
-            //      这两种都只从**屏幕外**进场，不会有鱼凭空出现在画面中间；
-            //      抛钩段和收钩出水段（还没过 CastDepth）依然不补，否则鱼会出现在开始画面上；
-            //   ③ 同屏**自由游动**的鱼没到上限（挂在钩上的鱼不占名额，
-            //      否则每抓到一条就永久吃掉一个刷鱼名额，上浮时鱼会越来越少）。
+            // 补鱼条件：① 在玩（下潜 / 上浮）；② 世界在动（滚动，或已下潜但背景停住的触底冲刺段），
+            // 保证鱼一律从**屏幕外**进场，不会凭空出现在画面中间；抛钩段和收钩段不补，
+            // 否则鱼会出现在开始画面上；③ 同屏自由游动的鱼没到上限
+            // （挂在钩上的不占名额，否则每抓到一条就永久少一个名额，上浮会越来越冷清）
             bool diving = state is GameState.CastingDown or GameState.ReelingUp;
             bool canEnter = scrollDir != 0 || (_cfg.spawnWhenStill && depth > _cfg.CastDepth);
             bool wantSpawn = diving && canEnter && CountSwimming() < _cfg.maxFishAlive;
@@ -152,12 +148,9 @@ namespace Controller
         }
 
         /// <summary>
-        /// 每帧推进所有自由的鱼。
-        ///
-        /// 纵向位移由背景滚动带着走（鱼是 BG 的子物体），这里只算横向——
-        /// 但横向**必须排队**：鱼速差别很大（0.9 ~ 4.5 单位/秒），快的会追尾慢的，
-        /// 一旦穿插画面上就是"两条鱼叠在一起"。所以追上前面的鱼时，这一步只走到
-        /// "贴着它"的位置，等它让开再继续。
+        /// 每帧推进所有自由的鱼。纵向位移由背景滚动带着走（鱼是 BG 的子物体），这里只算横向；
+        /// 但横向**必须排队**：鱼速差别很大，快的会追尾慢的，一穿插画面上就是两条鱼叠在一起，
+        /// 所以追上前面的鱼时这一步只走到"贴着它"的位置，等它让开再继续。
         /// </summary>
         private void MoveAll(float dt, float depth)
         {
@@ -235,11 +228,10 @@ namespace Controller
                         continue;
                     }
 
-                    // 还没进过画面。它本该在屏幕外等着进场，但有两种情况它永远进不来了：
-                    //   ① 横向游出了可视范围 —— 鱼不会掉头，出去就回不来；
-                    //   ② 等太久了 —— 兜底，任何意外都不该让一条鱼永远占着名额。
-                    // 不处理的话这些鱼会一直 Alive，把 maxFishAlive 吃光，
-                    // 表现就是"越到后面鱼越少"（上浮段尤其明显）。
+                    // 还没进过画面：它本该在屏幕外等着进场，但两种情况它永远进不来了 ——
+                    //   ① 横向游出了可视范围（鱼不会掉头，出去就回不来）；
+                    //   ② 在屏幕外等太久（兜底）。
+                    // 不回收的话它们会一直 Alive 把名额吃光，表现就是"越到后面鱼越少"。
                     bool lostHorizontally = b.max.x < left - margin || b.min.x > right + margin;
                     if (lostHorizontally || fish.Life > _cfg.maxOutsideLife)
                     {
@@ -260,14 +252,11 @@ namespace Controller
         }
 
         /// <summary>
-        /// 生成一条鱼：位置一律在屏幕外，方向保证它一定会穿过画面。
-        ///   背景上移（下潜）→ 从屏幕下方进场
-        ///   背景下移（上浮）→ 从屏幕上方进场
-        ///   背景静止       → 从屏幕左右两侧进场，横向穿过
+        /// 生成一条鱼。位置一律在屏幕外，方向保证它一定会穿过画面：
+        ///   背景上移（下潜）→ 从下方进场；背景下移（上浮）→ 从上方进场；背景静止 → 从左右两侧横向穿过。
         ///
-        /// **会先做一次"泳道查重"**：和已有的鱼纵向挨得太近就这次不生成。
-        /// 这一条是防重叠的第一道关 —— 生成间隔调得再小，鱼也不会挤在同一层；
-        /// 实际刷鱼密度会自动被"一屏能排下几条"限制住，而不是被间隔数字决定。
+        /// 生成前先做一次"泳道查重"：和已有的鱼纵向挨得太近这次就不生成。
+        /// 这是防重叠的第一道关 —— 间隔调得再小，实际密度也会被"一屏能排下几条"限制住。
         /// </summary>
         private void Spawn(float depth, int scrollDir)
         {

@@ -4,12 +4,10 @@ using UnityEngine;
 namespace Controller
 {
     /// <summary>
-    /// 控制层持有的一条鱼的运行时数据。
+    /// 【控制层】一条鱼的运行时数据。
     ///
-    /// **纯数据，不含任何引用类型**（Vector3 / Bounds 是值类型）——
-    /// 控制层不持有 View，View 也不持有数据，依赖方向只有两条：
-    ///     Controller → Model（数据）
-    ///     View       → Controller（表现层每帧来"拉"状态）
+    /// **纯数据，不含任何引用类型**（Vector3 / Bounds 都是值类型）：
+    /// 控制层不持有 View，View 也不持有数据，两边只靠"槽位 id"关联。
     /// </summary>
     public class FishRuntime
     {
@@ -52,10 +50,8 @@ namespace Controller
         public bool HasEnteredView;
 
         /// <summary>
-        /// 出生到现在活了多久（秒）。
-        /// 用来兜底回收"永远进不了画面"的鱼：鱼不会掉头，横向一旦游出可视范围就再也回不来了；
-        /// 那种鱼若没有兜底，就会被当成"还在屏幕外等着进场"——永远占着槽位，把刷鱼名额吃光。
-        /// 这正是"上浮时鱼明显比下潜少"的元凶。
+        /// 出生到现在活了多久（秒）。用来兜底回收"永远进不了画面"的鱼：
+        /// 鱼不会掉头，横向游出可视范围就再也回不来了，没有兜底它会一直占着刷鱼名额。
         /// </summary>
         public float Life;
 

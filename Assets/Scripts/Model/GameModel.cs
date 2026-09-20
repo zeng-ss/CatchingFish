@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Model
 {
-    /// <summary>渔获记录，结算列表展示用</summary>
+    /// <summary>【数据层】一条渔获的记录。结算列表拿它去取名字、分数和图标。</summary>
     public struct CaughtFish
     {
         public FishType Type;
@@ -19,6 +19,12 @@ namespace Model
         public Color Color;
     }
 
+    /// <summary>
+    /// 【数据层】一局的全部数值：氧气、深度、分数、渔获列表。
+    ///
+    /// 纯 C# 类，**不引用任何 MonoBehaviour**；数值一变就通过 EventMgr 广播，
+    /// View 订阅事件刷新界面 —— Model 不知道界面存在。
+    /// </summary>
     public class GameModel
     {
         private readonly List<CaughtFish> _caught = new();

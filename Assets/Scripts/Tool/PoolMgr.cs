@@ -3,59 +3,36 @@ using UnityEngine;
 
 namespace Tool
 {
+    /// <summary>
+    /// 【工具层】对象池。每种鱼一个池，由 `FishSpawner` 懒创建。
+    /// 池子空了会自动补一个新实例，所以"同屏鱼很多"时不会出现刷不出鱼的情况。
+    /// </summary>
     public static class PoolMgr
     {
         private class Pool
         {
-            private readonly Transform root;
+            private readonly Transform _root;
             private readonly string _path;
             private readonly string _poolName;
             private readonly Queue<GameObject> _objs = new();
 
             public Pool(string poolName, int size, string path)
             {
-                root = new GameObject(poolName).transform;
+                _root = new GameObject(poolName).transform;
                 _path = path;
                 _poolName = poolName;
-                Create(size, path);
-            }
 
-            private void Create(int count, string path)
-            {
-                for (int i = 0; i < count; i++)
+                // 预热：先造好一批躺在池子里
+                for (int i = 0; i < size; i++)
                 {
-                    var go = ResourcesMgr.Load<GameObject>(path, root);
-                    if (go == null)
-                    {
-                        // 资源路径写错时不继续刷屏报错，交由 ResourcesMgr 输出一次日志
-                        return;
-                    }
-
-                    go.name = _poolName;
-                    go.SetActive(false);
-                    go.transform.localPosition = Vector3.zero;
-                    go.transform.localRotation = Quaternion.identity;
-                    _objs.Enqueue(go);
+                    CreateOne(pooled: true);
                 }
             }
 
             public void Push(GameObject obj)
             {
-                if (obj == null)
+                if (obj == null || obj.name != _poolName || _objs.Contains(obj))
                 {
-                    Debug.LogError("[PoolMgr] 入队物体为空");
-                    return;
-                }
-
-                if (obj.name != _poolName)
-                {
-                    Debug.LogError("[PoolMgr] 入错了队");
-                    return;
-                }
-
-                if (_objs.Contains(obj))
-                {
-                    Debug.LogWarning($"[PoolMgr] 对象重复入池: {obj.name}");
                     return;
                 }
 
@@ -67,88 +44,64 @@ namespace Tool
 
             public GameObject Pop()
             {
-                GameObject go;
                 if (_objs.Count > 0)
                 {
-                    go = _objs.Dequeue();
-                    go.SetActive(true);
-                    return go;
+                    GameObject pooled = _objs.Dequeue();
+                    pooled.SetActive(true);
+                    return pooled;
                 }
 
-                Debug.Log("[PoolMgr] 池子空了，动态补一个");
-                go = ResourcesMgr.Load<GameObject>(_path, root);
+                // 池子空了：现场补一个直接交付（不同屏鱼数突然变大时不会刷不出鱼）
+                return CreateOne(pooled: false);
+            }
+
+            private GameObject CreateOne(bool pooled)
+            {
+                GameObject go = ResourcesMgr.Load<GameObject>(_path, _root);
                 if (go == null)
                 {
-                    return null;
+                    return null; // 路径写错时由 ResourcesMgr 输出一次日志，这里不重复刷屏
                 }
 
                 go.name = _poolName;
-                go.SetActive(true);
                 go.transform.localPosition = Vector3.zero;
                 go.transform.localRotation = Quaternion.identity;
-                return go;
-            }
+                go.SetActive(!pooled);
 
-            public void ClearPool()
-            {
-                foreach (var obj in _objs)
+                if (pooled)
                 {
-                    Object.Destroy(obj);
+                    _objs.Enqueue(go);
                 }
 
-                _objs.Clear();
+                return go;
             }
         }
 
-        private static readonly Dictionary<string, Pool> PoolsDict = new();
+        private static readonly Dictionary<string, Pool> Pools = new();
 
-        public static bool HasPool(string name)
-        {
-            return PoolsDict.ContainsKey(name);
-        }
+        public static bool HasPool(string name) => Pools.ContainsKey(name);
 
         public static void CreatePool(string name, int count, string path)
         {
-            if (PoolsDict.ContainsKey(name))
+            if (Pools.ContainsKey(name))
             {
-                Debug.LogWarning($"[PoolMgr] 池子已存在，跳过重复创建：{name}");
                 return;
             }
 
-            Pool pool = new Pool(name, count, path);
-            PoolsDict.Add(name, pool);
-        }
-
-        public static void Push(string name, GameObject obj)
-        {
-            if (PoolsDict.TryGetValue(name, out var pool))
-            {
-                pool.Push(obj);
-                return;
-            }
-
-            Debug.LogError("[PoolMgr] 池子不存在！");
+            Pools.Add(name, new Pool(name, count, path));
         }
 
         public static GameObject Pop(string name)
         {
-            if (PoolsDict.TryGetValue(name, out var pool))
-            {
-                return pool.Pop();
-            }
-
-            Debug.LogError("[PoolMgr] 池子不存在！");
-            return null;
+            return Pools.TryGetValue(name, out Pool pool) ? pool.Pop() : null;
         }
 
-        public static void Clear()
+        public static void Push(string name, GameObject obj)
         {
-            foreach (var pool in PoolsDict.Values)
+            if (Pools.TryGetValue(name, out Pool pool))
             {
-                pool.ClearPool();
+                pool.Push(obj);
             }
-
-            PoolsDict.Clear();
         }
     }
 }
