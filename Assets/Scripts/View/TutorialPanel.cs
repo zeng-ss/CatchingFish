@@ -115,7 +115,12 @@ namespace View
 
         #region 事件
 
-        private void OnHint(object payload) => hintText.text = payload as string;
+        private void OnHint(object payload)
+        {
+            hintText.transform.localScale = Vector3.one * 0.6f;
+            hintText.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
+            hintText.text = payload as string;
+        }
 
         private void OnOxygen(object payload)
         {

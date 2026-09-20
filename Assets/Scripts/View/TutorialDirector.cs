@@ -338,11 +338,7 @@ namespace View
         /// <summary>把 DOTween 的 Tween 包成协程，剧本里读起来就是一行。</summary>
         private static IEnumerator Run(Tween tween)
         {
-            if (tween == null)
-            {
-                yield break;
-            }
-
+            if (tween == null) yield break;
             yield return tween.WaitForCompletion();
         }
     }

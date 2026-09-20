@@ -1,4 +1,5 @@
 using Core;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -112,6 +113,8 @@ namespace View
                 _ => string.Empty,
             };
 
+            hintText.transform.localScale = Vector3.one * 0.6f;
+            hintText.transform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
             hintText.text = hint;
             hintRoot.SetActive(!string.IsNullOrEmpty(hint));
         }
