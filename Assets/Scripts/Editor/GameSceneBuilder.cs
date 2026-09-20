@@ -21,6 +21,7 @@ namespace GameEditor
     {
         private const string HudCanvasName = "HUDCanvas";
         private const string ResultCanvasName = "ResultCanvas";
+        private const string TutorialCanvasName = "TutorialCanvas";
         private const string FishPrefabFolder = "Assets/Resources/Prefab/Fish";
 
         private static readonly Vector2 RefResolution = new Vector2(1920f, 1080f);
@@ -146,6 +147,16 @@ namespace GameEditor
                 ? so.FindProperty("hookView") ?? so.FindProperty("_hookView")
                 : null;
 
+            GameMgr[] allGameMgrs = Object.FindObjectsOfType<GameMgr>(true);
+            TutorialDirector director = Object.FindObjectOfType<TutorialDirector>(true);
+            TutorialPanel tutorialPanel = Object.FindObjectOfType<TutorialPanel>(true);
+            Transform guideBg = FindTransform("GuideBG");
+            Transform guideHook = FindTransform("GuideHook");
+            Transform guideCamTr = FindTransform("GuideCamera");
+            Camera guideCam = guideCamTr != null ? guideCamTr.GetComponent<Camera>() : null;
+            GameObject guideMgrGo = FindRootObject("GuideMgr");
+            Transform guideHead = worldRoot != null ? worldRoot.Find("head") : null;
+
             Debug.Log(
                 "[捕鱼] 场景检查：\n" +
                 "- 场景物体：\n" +
@@ -160,13 +171,184 @@ namespace GameEditor
                 $"    ResultPanel         : {(Object.FindObjectOfType<ResultPanel>() != null ? "OK" : "缺失，可执行菜单 2")}\n" +
                 "- GameMgr 引用：\n" +
                 $"    worldRoot           : {(worldProp != null && worldProp.objectReferenceValue != null ? "OK" : "未接线，可执行菜单 2")}\n" +
-                $"    hookView            : {(hookProp != null && hookProp.objectReferenceValue != null ? "OK" : "未接线，可执行菜单 2")}");
+                $"    hookView            : {(hookProp != null && hookProp.objectReferenceValue != null ? "OK" : "未接线，可执行菜单 2")}\n" +
+                "- 教程（布景摆拍 + 取景相机 → RenderTexture → RawImage）：\n" +
+                $"    GuideBG / GuideHook : {(guideBg != null && guideHook != null ? "OK" : "缺失！")}\n" +
+                $"    GuideCamera         : {(guideCam != null ? "OK" : "缺失！")}\n" +
+                $"    GuideCamera 标签    : {(guideCam != null && guideCam.CompareTag("MainCamera") ? "⚠ 还带着 MainCamera 标签，请取消它" : "OK")}\n" +
+                $"    TutorialDirector    : {(director != null ? "OK" : "缺失，可执行菜单 5")}\n" +
+                $"    TutorialPanel       : {(tutorialPanel != null ? "OK" : "缺失，可执行菜单 5")}\n" +
+                $"    GameMgr 实例数量    : {(allGameMgrs.Length <= 1 ? $"{allGameMgrs.Length}（OK）" : $"{allGameMgrs.Length}（⚠ 会抢单例，只能留一个）")}\n" +
+                $"    GuideMgr 上的 GameMgr: {(guideMgrGo != null && guideMgrGo.GetComponent<GameMgr>() != null ? "⚠ 请移除：会和主 GameMgr 抢单例" : "OK")}\n" +
+                $"    BG/head（头部背景） : {(guideHead == null ? "已移除" : guideHead.gameObject.activeSelf ? "⚠ 还开着（教程不要它的话就 SetActive(false)）" : "已关闭（OK）")}");
+        }
+
+        // ------------------------------------------------------------------
+        // 教程面板（开局前那个实时演示）
+        // ------------------------------------------------------------------
+
+        [MenuItem("工具/捕鱼/5. 搭建教程面板并接线", false, 13)]
+        public static void BuildTutorial()
+        {
+            EnsureSceneLoaded();
+
+            Transform guideBg = FindTransform("GuideBG");
+            Transform guideHook = FindTransform("GuideHook");
+            Transform guideCamTr = FindTransform("GuideCamera");
+
+            if (guideBg == null || guideHook == null || guideCamTr == null)
+            {
+                Debug.LogError("[捕鱼] 没找到教程布景（GuideBG / GuideHook / GuideCamera），" +
+                               "菜单 5 要在布景搭好之后才能跑。");
+                return;
+            }
+
+            Camera guideCam = guideCamTr.GetComponent<Camera>();
+
+            WarnAboutGuideRig(guideCam);
+            BuildTutorialCanvas(guideCam);
+            WireTutorialDirector(guideHook, guideBg, guideCam);
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+
+            Debug.Log("[捕鱼] 教程面板已就绪：HUD 之上的 TutorialCanvas（全屏遮罩 + 取景面板 + 氧气条 + 提示 + 三个按钮），" +
+                      "TutorialPanel 与 TutorialDirector 的引用都已接好。运行时面板会自己建 RenderTexture 交给 GuideCamera。");
+
+            ReportSceneWiring();
+        }
+
+        /// <summary>
+        /// 教程布景里两个"一定会出事"的设置，只提醒不代改 —— 本搭建器的原则是"只补不改"。
+        ///   ① GuideCamera 带着 MainCamera 标签 → Camera.main 可能返回取景相机，游戏的视口/镜头计算会全错
+        ///   ② GuideMgr 上还挂着 GameMgr → 会和主 GameMgr 抢单例（谁先 Awake 谁是真身）
+        /// </summary>
+        private static void WarnAboutGuideRig(Camera guideCam)
+        {
+            if (guideCam != null && guideCam.CompareTag("MainCamera"))
+            {
+                Debug.LogError("[捕鱼] GuideCamera 还带着 MainCamera 标签，请取消它！" +
+                               "否则 Camera.main 可能返回取景相机，GameMgr / ViewportUtil / CameraController 会一起算错。");
+            }
+
+            GameObject guideMgr = FindRootObject("GuideMgr");
+            if (guideMgr != null && guideMgr.GetComponent<GameMgr>() != null)
+            {
+                Debug.LogError("[捕鱼] GuideMgr 上还挂着 GameMgr 组件，请移除它！" +
+                               "两个 GameMgr 会抢单例，可能整个游戏都跑在 z≈200 的教程布景上。" +
+                               "教程侧只需要 TutorialDirector，它不依赖任何游戏控制器。");
+            }
+        }
+
+        private static TutorialPanel BuildTutorialCanvas(Camera guideCam)
+        {
+            // sortingOrder 最高：教程面板要盖在 HUD(0) 和结算界面(100) 之上
+            Canvas canvas = ReuseOrCreateCanvas(TutorialCanvasName, 200);
+            Transform root = canvas.transform;
+
+            EnsureFontBootstrap(root);
+
+            // 全屏遮罩：挡住后面那一局的画面，顺便吃掉落在面板上的点击
+            Image overlayImage = GetOrCreateImage(root, "TutorialRoot", new Color(0.02f, 0.04f, 0.07f, 0.92f));
+            overlayImage.raycastTarget = true;
+            RectTransform overlay = overlayImage.rectTransform;
+            Stretch(overlay);
+
+            // 取景框：RawImage 就贴在这块面板里
+            Image panelImage = GetOrCreateImage(overlay, "VideoPanel", new Color(0.05f, 0.11f, 0.19f, 1f));
+            panelImage.raycastTarget = true;
+            RectTransform panel = panelImage.rectTransform;
+            SetAnchored(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(960f, 660f));
+
+            // --- 教程画面（运行时由 TutorialPanel 填 RenderTexture）---
+            RawImage screen = GetOrCreateRawImage(panel, "Screen", Color.white);
+            Stretch(screen.rectTransform, 10f);
+
+            // --- 氧气条（和 HUD 一样靠 anchorMax.x 驱动）---
+            Image oxygenBg = GetOrCreateImage(panel, "OxygenBarBg", new Color(0.06f, 0.09f, 0.14f, 0.9f));
+            SetAnchored(oxygenBg.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(28f, -26f), new Vector2(300f, 28f));
+
+            Image oxygenFill = GetOrCreateImage(oxygenBg.transform, "OxygenFill", new Color(0.32f, 0.76f, 1f));
+            SetupBarFill(oxygenFill, 3f);
+
+            Text oxygenText = GetOrCreateText(panel, "OxygenText", "OXYGEN 100/100", 26, TextAnchor.MiddleLeft,
+                new Color(0.86f, 0.94f, 1f));
+            SetAnchored(oxygenText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(344f, -26f), new Vector2(340f, 28f));
+
+            // --- 面板底部的操作提示 ---
+            Text hintText = GetOrCreateText(panel, "TutorialHintText", "按住鼠标左键，可以左右拖动鱼钩", 32,
+                TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.95f));
+            SetAnchored(hintText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, 34f), new Vector2(880f, 56f));
+
+            // --- 跳过：演示途中就能点 ---
+            Button skipButton = GetOrCreateButton(panel, "SkipButton", "跳过", Vector2.zero, new Vector2(150f, 56f));
+            SetAnchored(skipButton.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(1f, 1f),
+                new Vector2(1f, 1f), new Vector2(-26f, -26f), new Vector2(150f, 56f));
+
+            // --- 演示结束后才出现的两个按钮 ---
+            RectTransform finishRoot = GetOrCreateRect(panel, "FinishRoot");
+            SetAnchored(finishRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(880f, 200f));
+
+            Button replayButton = GetOrCreateButton(finishRoot, "ReplayButton", "再看一遍", new Vector2(-190f, 0f),
+                new Vector2(320f, 84f));
+            Button startButton = GetOrCreateButton(finishRoot, "StartButton", "开始游戏", new Vector2(190f, 0f),
+                new Vector2(320f, 84f));
+
+            finishRoot.gameObject.SetActive(false);
+
+            // --- 组件 + 接线 ---
+            TutorialPanel tutorialPanel = canvas.GetComponent<TutorialPanel>();
+            if (tutorialPanel == null)
+            {
+                tutorialPanel = canvas.gameObject.AddComponent<TutorialPanel>();
+            }
+
+            SerializedObject so = new SerializedObject(tutorialPanel);
+            SetRef(so, "screen", screen);
+            SetRef(so, "filmCamera", guideCam);
+            SetRef(so, "hintText", hintText);
+            SetRef(so, "oxygenFill", oxygenFill);
+            SetRef(so, "oxygenText", oxygenText);
+            SetRef(so, "finishRoot", finishRoot.gameObject);
+            SetRef(so, "replayButton", replayButton);
+            SetRef(so, "startButton", startButton);
+            SetRef(so, "skipButton", skipButton);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return tutorialPanel;
+        }
+
+        /// <summary>把 TutorialDirector 绑到布景上（鱼和提示都由它自己按 Resources 路径生成）。</summary>
+        private static void WireTutorialDirector(Transform guideHook, Transform guideBg, Camera guideCam)
+        {
+            GameObject guideMgr = FindRootObject("GuideMgr");
+            if (guideMgr == null)
+            {
+                guideMgr = new GameObject("GuideMgr");
+                Debug.Log("[捕鱼] 场景里没有 GuideMgr，已新建一个用来挂 TutorialDirector。");
+            }
+
+            TutorialDirector director = guideMgr.GetComponent<TutorialDirector>();
+            if (director == null)
+            {
+                director = guideMgr.AddComponent<TutorialDirector>();
+            }
+
+            SerializedObject so = new SerializedObject(director);
+            SetRef(so, "hook", guideHook);
+            SetRef(so, "fishRoot", guideBg.Find("fishs"));
+            SetRef(so, "filmCamera", guideCam);
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ------------------------------------------------------------------
         // 装配
         // ------------------------------------------------------------------
-
         /// <summary>
         /// 保证主场景已经打开。
         /// 菜单调用时场景本来就是开的；这条主要是为了支持命令行 -executeMethod 批处理调用。
@@ -268,8 +450,26 @@ namespace GameEditor
 
         private static Transform FindTransform(string objectName)
         {
-            GameObject go = GameObject.Find(objectName);
+            GameObject go = FindRootObject(objectName);
             return go != null ? go.transform : null;
+        }
+
+        /// <summary>
+        /// 按名字找场景根物体（含未激活的）。比 GameObject.Find 稳：
+        /// 后者找不到未激活对象，也不适合用来查"是不是有两个同名根物体"。
+        /// </summary>
+        private static GameObject FindRootObject(string objectName)
+        {
+            GameObject[] roots = SceneManager.GetActiveScene().GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                if (roots[i] != null && roots[i].name == objectName)
+                {
+                    return roots[i];
+                }
+            }
+
+            return null;
         }
 
         // ------------------------------------------------------------------
@@ -500,6 +700,33 @@ namespace GameEditor
             image.color = color;
             image.raycastTarget = false;
             return image;
+        }
+
+        /// <summary>
+        /// 教程画面用的 RawImage（无 Sprite，只有 texture）。
+        /// RawImage 和 Image 都是 Graphic，同一个物体上不能共存，所以发现残留的 Image 先清掉。
+        /// </summary>
+        private static RawImage GetOrCreateRawImage(Transform parent, string name, Color color)
+        {
+            RectTransform rt = GetOrCreateRect(parent, name);
+
+            Image redundant = rt.GetComponent<Image>();
+            if (redundant != null)
+            {
+                Object.DestroyImmediate(redundant);
+                Debug.Log($"[捕鱼] {name} 上多余的 Image 已移除（同一物体只能有一个 Graphic）。");
+            }
+
+            RawImage raw = rt.GetComponent<RawImage>();
+            if (raw == null)
+            {
+                raw = rt.gameObject.AddComponent<RawImage>();
+            }
+
+            raw.texture = null; // 运行时由 TutorialPanel 建好 RenderTexture 再塞进来
+            raw.color = color;
+            raw.raycastTarget = false;
+            return raw;
         }
 
         /// <summary>

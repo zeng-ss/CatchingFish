@@ -13,13 +13,18 @@ namespace Core
         [Header("场景引用")] [Tooltip("整体滚动的世界根节点 BG")] [SerializeField] private Transform worldRoot;
         [SerializeField] private HookView hookView;
 
+        [Tooltip("开场是否先播玩法教程（面板点 [开始游戏] 之后才进 Ready）。调试时可以关掉")]
+        [SerializeField]
+        private bool playTutorial = true;
+
         private GameConfig _cfg;
         private InputController _input;
         private BGController _bgCtrl;
         private HookController _hookCtrl;
         private FishController _fishCtrl;
-        private GameState _state = GameState.Ready;
+        private GameState _state = GameState.Tutorial;
         private GameModel _gModel;
+        private bool _tutorialDone;
 
         private CameraController _camCtrl;
         private bool _camMovedToPlay;
@@ -33,9 +38,6 @@ namespace Core
         ///      所以鱼钩刚好停在游玩位置的那一刻，镜头也刚好到位；
         ///   ④ 那一刻之后 depth 超过 CastDepth，WorldScrollAt 才开始大于 0 —— 背景开始滚动。
         /// </summary>
-        private void TickIntroCamera_已废弃()
-        {
-        }
         public GameConfig Config => _cfg;
 
         /// <summary>表现层按 id 来"拉"鱼的状态用。</summary>
@@ -69,6 +71,21 @@ namespace Core
 
             // 显示层持有控制层引用（View → Controller）
             hookView.Bind(_hookCtrl);
+
+            // 教程面板点 [开始游戏] 之后才真正开局。两边只走事件，谁也不持有谁
+            EventMgr.Subscribe(GameEvent.TutorialStartGame, OnTutorialStartGame);
+        }
+
+        /// <summary>教程看完 / 被跳过：这一局正式开始。</summary>
+        private void OnTutorialStartGame(object payload)
+        {
+            if (_tutorialDone)
+            {
+                return;
+            }
+
+            _tutorialDone = true;
+            RestartGame();
         }
 
         private void Start()
@@ -116,6 +133,10 @@ namespace Core
         {
             switch (_state)
             {
+                // 教程阶段：主流程完全静默 —— 面板盖在画面上，玩家的点击留给面板上的按钮
+                case GameState.Tutorial:
+                    break;
+
                 case GameState.Ready:
                     if (_input.PressedThisFrame) ChangeState(GameState.CastingDown);
                     break;
@@ -237,7 +258,11 @@ namespace Core
             }
         }
 
-        /// <summary>重开一局。</summary>
+        /// <summary>
+        /// 重开一局。
+        /// 教程还没看过时，开局前先回到 Tutorial 状态（面板会演一遍玩法）；
+        /// 看完之后再重开就直接进 Ready。
+        /// </summary>
         public void RestartGame()
         {
             // 被抓住的鱼先还回对象池，再清空钩子和全部存活鱼
@@ -250,7 +275,7 @@ namespace Core
             _camMovedBack = false;
             _camCtrl?.StartMove(true, 0f);   // 立刻回到开始画面
             _bgCtrl.ResetScroll();
-            _state = GameState.Ready;
+            _state = playTutorial && !_tutorialDone ? GameState.Tutorial : GameState.Ready;
 
             EventMgr.Publish(GameEvent.StateChanged, _state);
         }

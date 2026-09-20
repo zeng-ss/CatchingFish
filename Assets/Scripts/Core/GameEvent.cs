@@ -21,7 +21,26 @@ namespace Core
         SettleAnimDone,
 
         /// <summary>某条鱼缩完了，要在它的位置冒 "+分数"。负载：FishBurstPayload</summary>
-        SettleFishBurst
+        SettleFishBurst,
+
+        // ==================================================================
+        // 教程（开局前那个面板里的实时演示）
+        // ==================================================================
+
+        /// <summary>教程底部提示。负载：string（空字符串 = 隐藏）</summary>
+        TutorialHint,
+
+        /// <summary>教程氧气条。负载：float（0~1）</summary>
+        TutorialOxygen,
+
+        /// <summary>教程演完了，面板可以弹 [再看一遍][开始游戏]</summary>
+        TutorialFinished,
+
+        /// <summary>面板点了 [再看一遍]</summary>
+        TutorialReplay,
+
+        /// <summary>面板点了 [开始游戏]，主流程据此进入 Ready</summary>
+        TutorialStartGame
     }
 
     /// <summary>结算飘字负载。</summary>

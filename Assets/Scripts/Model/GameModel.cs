@@ -11,6 +11,12 @@ namespace Model
         public FishType Type;
         public string DisplayName;
         public int Score;
+
+        /// <summary>预制体名。结算条目靠它去 Resources/Icon/Fish 取图标。</summary>
+        public string PrefabName;
+
+        /// <summary>该鱼种的主题色（鱼表里一直有，之前没派上用场，现在拿来做条目的配色）。</summary>
+        public Color Color;
     }
 
     public class GameModel
@@ -72,7 +78,9 @@ namespace Model
             {
                 Type = data.type,
                 DisplayName = string.IsNullOrEmpty(data.displayName) ? data.prefabName : data.displayName,
-                Score = data.score
+                Score = data.score,
+                PrefabName = data.prefabName,
+                Color = data.color
             });
 
             Score += data.score;

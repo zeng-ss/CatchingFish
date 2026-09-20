@@ -1,7 +1,8 @@
-﻿namespace Core
+namespace Core
 {
     public enum GameState
     {
+        Tutorial,       // 开局前的玩法教程（面板里放实时演示，不接受操作）
         Ready,          // 准备，等待长按开始
         CastingDown,    // 下潜：碰鱼扣血，可左右控制
         ReelingUp,      // 上浮：碰鱼抓取，可左右控制

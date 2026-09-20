@@ -233,8 +233,11 @@ namespace View
         /// 扇形展开角：第 1 条正下方，之后左右交替、越往后偏得越多。
         /// 0 → 0°，1 → -step（左），2 → +step（右），3 → -2·step，4 → +2·step …
         /// 绕 Z 轴正转会把下垂的身体推向 +X（右），所以往左取负号。
+        ///
+        /// 公开是为了让教程里的道具鱼（TutorialFishView）复用同一套角度规则，
+        /// 改这里两边的观感会一起变。
         /// </summary>
-        private static float FanAngle(int slot, float step)
+        public static float FanAngle(int slot, float step)
         {
             if (slot <= 0) return 0f;
 

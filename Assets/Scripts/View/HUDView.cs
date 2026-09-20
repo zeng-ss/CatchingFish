@@ -84,18 +84,9 @@ namespace View
 
         /// <summary>
         /// 设置进度条长度。
-        ///
-        /// 刻意**不用** Image.fillAmount：ugui 的 Filled / Sliced 网格生成在极端值下会算出
-        /// 非法顶点，Canvas 重建时就会刷 "Invalid AABB inAABB"。
-        /// 直接改 RectTransform 的 anchorMax.x 表达 0~1 的进度，等价、稳定、零副作用。
         /// </summary>
         private static void SetBar(Image bar, float ratio)
         {
-            if (bar == null)
-            {
-                return;
-            }
-
             Vector2 anchorMax = bar.rectTransform.anchorMax;
             anchorMax.x = Sanitize(ratio);
             bar.rectTransform.anchorMax = anchorMax;
@@ -111,6 +102,7 @@ namespace View
         {
             var hint = state switch
             {
+                GameState.Tutorial => string.Empty,   // 教程阶段由教程面板负责提示
                 GameState.Ready => "长按鼠标开始下潜（A/D 也可以左右移动）",
                 GameState.CastingDown => "按住鼠标左右移动，躲开鱼群",
                 GameState.ReelingUp => "收线中：碰到鱼就会抓住它",
