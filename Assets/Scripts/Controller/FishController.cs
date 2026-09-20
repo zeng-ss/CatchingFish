@@ -127,12 +127,16 @@ namespace Controller
         {
             RecycleOffScreen();
 
-            // 只在**背景真的在滚动**时才补鱼。
-            // 这样 Ready（开始画面）和抛钩段都不会刷鱼——那时候镜头还停在"头部背景"上，
-            // 鱼会直接出现在开始画面里；触底冲刺 / 收钩出水段背景也是停的，同样不补。
+            // 补鱼的条件：
+            //   ① 在玩（下潜 / 上浮）；
+            //   ② 要么背景在滚（常规段），要么已经潜下去了但背景停住（触底冲刺 / 收线起钩）——
+            //      这两种都只从**屏幕外**进场，不会有鱼凭空出现在画面中间；
+            //      抛钩段和收钩出水段（还没过 CastDepth）依然不补，否则鱼会出现在开始画面上；
+            //   ③ 同屏**自由游动**的鱼没到上限（挂在钩上的鱼不占名额，
+            //      否则每抓到一条就永久吃掉一个刷鱼名额，上浮时鱼会越来越少）。
             bool diving = state is GameState.CastingDown or GameState.ReelingUp;
-            int alive = CountAlive();
-            bool wantSpawn = diving && scrollDir != 0 && alive < _cfg.maxFishAlive;
+            bool canEnter = scrollDir != 0 || (_cfg.spawnWhenStill && depth > _cfg.CastDepth);
+            bool wantSpawn = diving && canEnter && CountSwimming() < _cfg.maxFishAlive;
 
             if (wantSpawn)
             {
@@ -147,17 +151,63 @@ namespace Controller
             MoveAll(dt, depth);
         }
 
+        /// <summary>
+        /// 每帧推进所有自由的鱼。
+        ///
+        /// 纵向位移由背景滚动带着走（鱼是 BG 的子物体），这里只算横向——
+        /// 但横向**必须排队**：鱼速差别很大（0.9 ~ 4.5 单位/秒），快的会追尾慢的，
+        /// 一旦穿插画面上就是"两条鱼叠在一起"。所以追上前面的鱼时，这一步只走到
+        /// "贴着它"的位置，等它让开再继续。
+        /// </summary>
         private void MoveAll(float dt, float depth)
         {
             float scroll = _cfg.WorldScrollAt(depth);
-            foreach (FishRuntime fish in _slots)
+
+            for (int i = 0; i < _slots.Count; i++)
             {
+                FishRuntime fish = _slots[i];
                 if (fish == null || !fish.Alive || fish.IsCaught || fish.Data == null) continue;
+
+                fish.Life += dt;
+
+                float step = Mathf.Abs(fish.Data.moveSpeed) * dt;
+                step = Mathf.Min(step, AllowedStep(fish));
+
                 fish.Position = new Vector3(
-                    fish.Position.x + fish.Direction * fish.Data.moveSpeed * dt,
+                    fish.Position.x + fish.Direction * step,
                     fish.BaseY + scroll,
                     fish.Position.z);
             }
+        }
+
+        /// <summary>
+        /// 这一步最多能横向走多远：看同一条"泳道"里挡在前面的那条鱼。
+        /// 只有纵向会撞上（两条鱼半高之和 + laneGap 之内）的才算同泳道；
+        /// 不同泳道的鱼各走各的，谁也不挡谁。
+        /// </summary>
+        private float AllowedStep(FishRuntime fish)
+        {
+            float limit = float.MaxValue;
+
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                FishRuntime other = _slots[i];
+                if (other == null || other == fish || !other.Alive || other.IsCaught || other.Data == null)
+                {
+                    continue;
+                }
+
+                float lane = (fish.Size.y + other.Size.y) * 0.5f + _cfg.laneGap;
+                if (Mathf.Abs(other.Position.y - fish.Position.y) > lane) continue;
+
+                float ahead = (other.Position.x - fish.Position.x) * fish.Direction;
+                if (ahead <= 0f) continue; // 在身后，不用管
+
+                float free = ahead - (fish.Size.x + other.Size.x) * 0.5f - _cfg.minFishGap;
+                if (free < limit) limit = free;
+            }
+
+            return Mathf.Max(0f, limit);
         }
 
         private void RecycleOffScreen()
@@ -176,11 +226,25 @@ namespace Controller
 
                 Bounds b = fish.WorldBounds;
 
-                // 1) 进过画面没有？鱼一律在屏幕外生成，没进过画面的绝不能回收
+                // 1) 进过画面没有？鱼一律在屏幕外生成，没进过画面的绝不能按"离开屏幕"回收
                 if (!fish.HasEnteredView)
                 {
                     if (b.max.x > left && b.min.x < right && b.max.y > bottom && b.min.y < top)
+                    {
                         fish.HasEnteredView = true;
+                        continue;
+                    }
+
+                    // 还没进过画面。它本该在屏幕外等着进场，但有两种情况它永远进不来了：
+                    //   ① 横向游出了可视范围 —— 鱼不会掉头，出去就回不来；
+                    //   ② 等太久了 —— 兜底，任何意外都不该让一条鱼永远占着名额。
+                    // 不处理的话这些鱼会一直 Alive，把 maxFishAlive 吃光，
+                    // 表现就是"越到后面鱼越少"（上浮段尤其明显）。
+                    bool lostHorizontally = b.max.x < left - margin || b.min.x > right + margin;
+                    if (lostHorizontally || fish.Life > _cfg.maxOutsideLife)
+                    {
+                        fish.Alive = false; // 表现层下一帧会发现并自己回池
+                    }
 
                     continue;
                 }
@@ -200,6 +264,10 @@ namespace Controller
         ///   背景上移（下潜）→ 从屏幕下方进场
         ///   背景下移（上浮）→ 从屏幕上方进场
         ///   背景静止       → 从屏幕左右两侧进场，横向穿过
+        ///
+        /// **会先做一次"泳道查重"**：和已有的鱼纵向挨得太近就这次不生成。
+        /// 这一条是防重叠的第一道关 —— 生成间隔调得再小，鱼也不会挤在同一层；
+        /// 实际刷鱼密度会自动被"一屏能排下几条"限制住，而不是被间隔数字决定。
         /// </summary>
         private void Spawn(float depth, int scrollDir)
         {
@@ -234,6 +302,8 @@ namespace Controller
                 }
             }
 
+            if (LaneOccupied(position.y)) return;
+
             int id = AllocateSlot(data, position, direction, depth);
             if (id < 0) return;
 
@@ -241,6 +311,26 @@ namespace Controller
             // FishView.OnEnable 会在 SetActive(true) 里同步触发，必须提前备好槽位。
             _pendingIds.Enqueue(id);
             if (!_spawner.Rent(data.prefabName, position)) _pendingIds.Dequeue();
+        }
+
+        /// <summary>
+        /// 这个高度上已经挤着鱼了吗？纵向间距不够就返回 true（这次不生成）。
+        /// 新鱼的尺寸要等表现层注册才知道，所以按一个保守的最小高度估算。
+        /// </summary>
+        private bool LaneOccupied(float y)
+        {
+            const float newFishHalfHeight = 0.30f;
+
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                FishRuntime fish = _slots[i];
+                if (fish == null || !fish.Alive || fish.IsCaught || fish.Data == null) continue;
+
+                float need = newFishHalfHeight + Mathf.Max(fish.Size.y, 0.5f) * 0.5f + _cfg.laneGap;
+                if (Mathf.Abs(fish.Position.y - y) < need) return true;
+            }
+
+            return false;
         }
 
         // ------------------------------------------------------------------
@@ -268,7 +358,12 @@ namespace Controller
             return id;
         }
 
-        private int CountAlive() => _slots.Count(fish => fish is { Alive: true });
+        /// <summary>
+        /// 同屏"自由游动"的鱼有几条。**故意不把挂在钩上的算进来**：
+        /// 钩上的鱼已经不在场上，却还占着名额的话，每抓到一条就少一个刷鱼名额，
+        /// 上浮段自然越抓越冷清。
+        /// </summary>
+        private int CountSwimming() => _slots.Count(fish => fish is { Alive: true, IsCaught: false });
 
         private float CurrentInterval(float depth)
         {

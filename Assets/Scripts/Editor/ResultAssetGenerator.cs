@@ -227,16 +227,25 @@ namespace GameEditor
         {
             EnsureFolder("Assets/Resources/UI");
 
+            // 面板 / 条目 / 按钮
             WriteSprite("PanelBg", 960, 660, PanelPixel, false);
             WriteSprite("Card", 200, 200, CardPixel, true);
             WriteSprite("Button", 320, 84, ButtonPixel, true);
             WriteSprite("AccentLine", 480, 8, AccentPixel, true);
             WriteSprite("Glow", 192, 192, GlowPixel, true);
 
+            // HUD / 提示用的：药丸底、进度条三件套、投影、圆徽章
+            WriteSprite("Pill", 512, 84, PillPixel, true);
+            WriteSprite("BarBg", 512, 40, BarBgPixel, true);
+            WriteSprite("BarFrame", 512, 40, BarFramePixel, true);
+            WriteSprite("BarFill", 512, 40, BarFillPixel, true);
+            WriteSprite("Shadow", 1024, 704, ShadowPixel, true);
+            WriteSprite("Badge", 96, 96, BadgePixel, true);
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Debug.Log($"[结算美术] 已生成 5 张 UI 图片 → {UiFolder}/（白色+alpha，靠 Image.color 上色）。");
+            Debug.Log($"[结算美术] 已生成 11 张 UI 图片 → {UiFolder}/（白色+alpha，靠 Image.color 上色）。");
         }
 
         private static Color PanelPixel(float u, float v)
@@ -328,15 +337,111 @@ namespace GameEditor
             return new Color(1f, 1f, 1f, a);
         }
 
-        /// <summary>圆角矩形的覆盖度（0~1），带 1px 抗锯齿。</summary>
-        private static float RoundedCoverage(float u, float v, float radius, float w, float h)
+        /// <summary>药丸底：给提示文字、小标签当背景。</summary>
+        private static Color PillPixel(float u, float v)
+        {
+            float cov = RoundedCoverage(u, v, 42f, 512f, 84f);
+            if (cov <= 0.001f)
+            {
+                return new Color(1f, 1f, 1f, 0f);
+            }
+
+            bool border = RoundedCoverage(u, v, 40f, 508f, 80f) < 0.5f;
+            float shade = Mathf.Lerp(0.72f, 1f, v);
+            if (border)
+            {
+                shade *= 1.35f;
+            }
+
+            float c = Mathf.Clamp(shade, 0f, 1.5f);
+            return new Color(c, c, c, cov);
+        }
+
+        /// <summary>进度条底：微微上暗下亮，看着像有厚度的凹槽。</summary>
+        private static Color BarBgPixel(float u, float v)
+        {
+            float cov = RoundedCoverage(u, v, 20f, 512f, 40f);
+            if (cov <= 0.001f)
+            {
+                return new Color(1f, 1f, 1f, 0f);
+            }
+
+            float shade = Mathf.Lerp(0.60f, 0.92f, v);
+            return new Color(shade, shade, shade, cov);
+        }
+
+        /// <summary>进度条外框：只有一圈圆角描边，中间透明，盖在填充之上。</summary>
+        private static Color BarFramePixel(float u, float v)
+        {
+            float outer = RoundedCoverage(u, v, 20f, 512f, 40f);
+            float inner = RoundedCoverage(u, v, 16.5f, 505f, 33f);
+            float ring = Mathf.Clamp01(outer - inner);
+            return new Color(1f, 1f, 1f, ring * 0.9f);
+        }
+
+        /// <summary>
+        /// 进度条填充：**刻意不做圆角**。
+        /// 填充块的宽度是靠 anchorMax.x 拉的，任何圆角都会被横向拉伸成怪形状；
+        /// 圆角交给外面的 BarFrame，这里只要一条竖向渐变 + 顶部高光。
+        /// </summary>
+        private static Color BarFillPixel(float u, float v)
+        {
+            float shade = Mathf.Lerp(0.72f, 1.1f, v);
+            if (v > 0.78f)
+            {
+                shade = 1.35f; // 顶部高光
+            }
+
+            float c = Mathf.Clamp(shade, 0f, 1.5f);
+            return new Color(c, c, c, 1f);
+        }
+
+        /// <summary>软投影：中间不透明、向外羽化，垫在面板/条目下面做出层次。</summary>
+        private static Color ShadowPixel(float u, float v)
+        {
+            // 内缩 60px 起算，向外羽化 45px
+            float d = RoundedDistance(u, v, 34f, 1024f - 120f, 704f - 120f) - 60f;
+            float a = Mathf.Clamp01(1f - d / 45f);
+            return new Color(0f, 0f, 0f, a * a * 0.62f);
+        }
+
+        /// <summary>圆徽章：给数量/图标当底。</summary>
+        private static Color BadgePixel(float u, float v)
+        {
+            float dx = u - 0.5f;
+            float dy = v - 0.5f;
+            float r = Mathf.Sqrt(dx * dx + dy * dy) * 2f;
+
+            float cov = Mathf.Clamp01((1f - r) * 48f);
+            if (cov <= 0.001f)
+            {
+                return new Color(1f, 1f, 1f, 0f);
+            }
+
+            float shade = Mathf.Lerp(1.05f, 0.78f, v);
+            if (r > 0.86f)
+            {
+                shade *= 1.35f; // 外圈亮边
+            }
+
+            float c = Mathf.Clamp(shade, 0f, 1.5f);
+            return new Color(c, c, c, cov);
+        }
+
+        /// <summary>点到圆角矩形边界的距离（内部为负），单位是像素。</summary>
+        private static float RoundedDistance(float u, float v, float radius, float w, float h)
         {
             float px = u * w - 0.5f;
             float py = v * h - 0.5f;
             float dx = Mathf.Max(radius - px, px - (w - radius), 0f);
             float dy = Mathf.Max(radius - py, py - (h - radius), 0f);
-            float d = Mathf.Sqrt(dx * dx + dy * dy) - radius;
-            return Mathf.Clamp01(0.5f - d);
+            return Mathf.Sqrt(dx * dx + dy * dy) - radius;
+        }
+
+        /// <summary>圆角矩形的覆盖度（0~1），带 1px 抗锯齿。</summary>
+        private static float RoundedCoverage(float u, float v, float radius, float w, float h)
+        {
+            return Mathf.Clamp01(0.5f - RoundedDistance(u, v, radius, w, h));
         }
 
         private static void WriteSprite(string name, int w, int h, System.Func<float, float, Color> shade, bool uncompressed)
@@ -604,7 +709,7 @@ namespace GameEditor
         // 工具
         // ==================================================================
 
-        private static Sprite LoadSprite(string name)
+        public static Sprite LoadSprite(string name)
         {
             Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{UiFolder}/{name}.png");
             if (sprite == null)
@@ -615,7 +720,7 @@ namespace GameEditor
             return sprite;
         }
 
-        private static void EnsureFolder(string path)
+        public static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path))
             {

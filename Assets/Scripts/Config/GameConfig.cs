@@ -44,19 +44,29 @@ namespace Config
 
         [Tooltip("挂在钩上的鱼的缩放")] public float catchSlotScale = 0.7f;
 
-        [Header("刷鱼")] [Tooltip("起始刷鱼间隔")] public float spawnInterval = 0.8f;
+        [Header("刷鱼")] [Tooltip("起始刷鱼间隔")] public float spawnInterval = 0.55f;
 
-        [Tooltip("最深处的刷鱼间隔")] public float spawnIntervalMin = 0.45f;
+        [Tooltip("最深处的刷鱼间隔")] public float spawnIntervalMin = 0.32f;
 
         [Tooltip("生成在屏幕外的最近距离")] public float spawnMarginMin = 2f;
 
-        [Tooltip("生成在屏幕外的最远距离")] public float spawnMarginMax = 5f;
+        [Tooltip("生成在屏幕外的最远距离")] public float spawnMarginMax = 4f;
 
-        [Tooltip("完全移出屏幕后，再往外走这么远才回收")] public float despawnMargin = 3f;
+        [Tooltip("完全移出屏幕后，再往外走这么远才回收")] public float despawnMargin = 1f;
 
-        [Tooltip("同屏最多存活多少条鱼")] public int maxFishAlive = 14;
+        [Tooltip("同屏最多有多少条『自由游动』的鱼（挂在钩上的不占名额）")] public int maxFishAlive = 26;
 
-        [Tooltip("每种鱼的预热对象池数量")] public int poolWarmCount = 3;
+        [Tooltip("背景停住但已经下潜时，也从左右两侧补鱼（触底冲刺 / 收线起钩这两段）")]
+        public bool spawnWhenStill = true;
+
+        [Tooltip("在屏幕外待超过这么久还没进场就回收（防止横向游出范围的鱼永远占着名额）")]
+        public float maxOutsideLife = 6f;
+
+        [Tooltip("判断『同一条泳道』的额外纵向余量：两条鱼的半高之和再加这么多就算会撞上")] public float laneGap = 0.18f;
+
+        [Tooltip("同泳道前后保持的最小横向间距")] public float minFishGap = 0.25f;
+
+        [Tooltip("每种鱼的预热对象池数量")] public int poolWarmCount = 5;
 
         [Tooltip("1 世界单位显示为多少米")] public float depthPerMeter = 1f;
 

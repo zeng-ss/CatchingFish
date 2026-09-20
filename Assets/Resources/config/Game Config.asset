@@ -24,16 +24,20 @@ MonoBehaviour:
   ascendSpeed: 4
   fastReturnSpeed: 18
   maxHp: 100
-  maxCatch: 6
+  maxCatch: 10
   hurtCooldown: 0.35
   catchSlotScale: 0.7
   spawnInterval: 0.1
   spawnIntervalMin: 0.1
   spawnMarginMin: 2
-  spawnMarginMax: 4
+  spawnMarginMax: 2.5
   despawnMargin: 1
-  maxFishAlive: 20
-  poolWarmCount: 5
+  maxFishAlive: 34
+  spawnWhenStill: 1
+  maxOutsideLife: 2
+  laneGap: 0.18
+  minFishGap: 0.25
+  poolWarmCount: 10
   depthPerMeter: 1
   cameraMoveDuration: 0.6
   cameraBackDuration: 0.5

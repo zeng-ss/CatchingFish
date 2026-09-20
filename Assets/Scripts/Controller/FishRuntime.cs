@@ -51,6 +51,14 @@ namespace Controller
         /// </summary>
         public bool HasEnteredView;
 
+        /// <summary>
+        /// 出生到现在活了多久（秒）。
+        /// 用来兜底回收"永远进不了画面"的鱼：鱼不会掉头，横向一旦游出可视范围就再也回不来了；
+        /// 那种鱼若没有兜底，就会被当成"还在屏幕外等着进场"——永远占着槽位，把刷鱼名额吃光。
+        /// 这正是"上浮时鱼明显比下潜少"的元凶。
+        /// </summary>
+        public float Life;
+
         public Bounds WorldBounds => new Bounds(Position, Size);
 
         public void Reset(FishData data, Vector3 position, Vector3 size, int direction)
@@ -63,6 +71,7 @@ namespace Controller
             IsCaught = false;
             HasHitHook = false;
             HasEnteredView = false;
+            Life = 0f;
         }
     }
 }
