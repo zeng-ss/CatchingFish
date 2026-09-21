@@ -1,3 +1,4 @@
+using Tool;
 using UnityEngine;
 
 namespace View
@@ -30,6 +31,7 @@ namespace View
         private bool _attached;
 
         private Transform _hook;
+        private Quaternion _catchRot;
         private Quaternion _hangRot;
         private float _fanAngle;
 
@@ -81,9 +83,11 @@ namespace View
             _moving = false;
             _attached = true;
 
-            _fanAngle = FishHang.FanAngle(slot, fanStep);
+            _fanAngle = HangMath.FanAngle(slot, fanStep);
+
             // 鼻子（transform.forward）朝上；用 FromToRotation 而不是写死角度，左右朝向的鱼都能转对
-            _hangRot = Quaternion.FromToRotation(transform.forward, Vector3.up) * transform.rotation;
+            _catchRot = transform.rotation;
+            _hangRot = HangMath.UpFacing(_catchRot);
 
             PlayDeath();
         }
@@ -115,11 +119,8 @@ namespace View
         {
             if (!_attached) return;
 
-            // ① 姿态 = 扇形倾角 × （鼻子朝上的定姿）
-            transform.rotation = Quaternion.Euler(0f, 0f, _fanAngle) * _hangRot;
-
-            // ② 把嘴挪回钩子上 == 绕嘴旋转（嘴是子物体，旋转后世界位置变了），不需要额外 pivot
-            transform.position += _hook.position - MouthPosition;
+            transform.rotation = HangMath.Pose(_catchRot, _hangRot, _fanAngle, 1f, 0f);
+            transform.position = HangMath.PlaceMouthOnHook(transform.position, MouthPosition, _hook.position);
         }
 
         /// <summary>鱼嘴的世界位置（沿鼻子方向偏移）。</summary>

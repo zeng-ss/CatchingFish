@@ -14,7 +14,7 @@ Unity **2022.3.52f1** + **URP** + **DOTween**，主场景 `Assets/Scenes/GameSce
 | --- | --- | --- | --- |
 | **Model**（数据） | 一局的数值：氧气 / 深度 / 分数 / 渔获。数值一变就发事件 | `GameModel` | 只依赖 `Config` 与事件总线，**不引用任何 MonoBehaviour** |
 | **Controller**（逻辑） | 鱼钩分段、鱼群模拟与回收、背景滚动、对象池。构造函数注入依赖 | `HookController` `FishController` `BGController` `FishSpawner` `InputController` | 依赖 Model 与同层，**不认识任何 View** |
-| **View**（表现） | 把控制器算出来的状态贴到 Transform / UI 上；订阅事件刷界面 | `HookView` `FishView` `FishHang` `HUDView` `ResultPanel` `TutorialPanel` | 依赖 Controller（每帧"拉"状态）+ 事件总线 |
+| **View**（表现） | 把控制器算出来的状态贴到 Transform / UI 上；订阅事件刷界面 | `HookView` `FishView` `FishHang` `HUDView` `ResultPanel` `TutorialPanel` | 依赖 `IFishStateSource` 接口 + 事件总线 |
 | **入口 / 组合根** | 唯一驱动控制器的地方：创建依赖、绑引用、跑状态机 | `GameMgr` | 认识所有层，但只暴露两个 View 引用 |
 | **工具 / 配置** | 与业务无关的纯函数、对象池、两张 SO 数据表 | `MathUtil` `ViewportUtil` `PoolMgr` `GameConfig` `FishConfig` | 谁都能用，自己不依赖别人 |
 
@@ -25,7 +25,10 @@ Unity **2022.3.52f1** + **URP** + **DOTween**，主场景 `Assets/Scenes/GameSce
 ```
 
 - **Controller 从不引用、不写任何 View**：它只更新自己的纯数据（`FishRuntime` 里没有 Transform、没有 FishView）。
-- **View 与控制层靠"槽位 id"关联**：`FishView.Register()` 领 id → 每帧 `Get(id)` → 控制层回收后自己 `Release()`。
+- **View 依赖接口而不是具体控制器**：`FishView` / `FishHang` 只持有 `IFishStateSource`
+  （`Register` / `Unregister` / `Get` / `Release` 四个方法，由 `FishController` 实现）——
+  所以表现层拿不到、也不会去碰 `Tick` / `RecycleAll` 这些只属于控制层的规则。
+- **View 与控制层靠"槽位 id"关联**：`Register()` 领 id → 每帧 `Get(id)` → 控制层回收后自己 `Release()`。
 - **跨层通信只走事件总线**（`EventMgr`）：Model / Controller 广播，View 订阅，谁都拿不到对方的引用。
 
 > 每个脚本的类注释第一行都标了所属层级（如 `【表现层】`、`【控制层】`），打开文件就能对上这张表。
@@ -146,12 +149,13 @@ Assets/Scripts
 ├── Config/       GameConfig / FishConfig / DefaultGameData          数据表（ScriptableObject）
 ├── Core/         GameMgr(MonoBehaviour) / GameState / GameEvent / EventMgr
 ├── Model/        GameModel（含 CaughtFish）                          纯数据
-├── Controller/   BGController / HookController / FishController / FishRuntime
+├── Controller/   IFishStateSource（View ↔ Controller 的唯一契约）
+│                 BGController / HookController / FishController / FishRuntime
 │                 FishSpawner / InputController / CameraController
 ├── View/         HookView / FishView / FishHang / HUDView / ResultPanel / ResultItem
 │                 SettleFx / FishIconLibrary / DynamicFontBootstrap
 │                 TutorialDirector / TutorialFishView / TutorialPanel
-├── Tool/         MonoSingleton / PoolMgr / ResourcesMgr / ViewportUtil / MathUtil
+├── Tool/         MonoSingleton / PoolMgr / ResourcesMgr / ViewportUtil / MathUtil / HangMath
 └── Editor/       FishAssetGenerator / GameSceneBuilder / ResultAssetGenerator / UiSkinBuilder
 ```
 
@@ -166,7 +170,7 @@ private void Update()
     bool canControl = _state is GameState.CastingDown or GameState.ReelingUp;
     _hookCtrl.TickHorizontal(dt, canControl, _input);   // ① 驱动控制器
     TickState(dt);                                      // ② 状态机
-    _fishCtrl.Tick(dt, _state, _gModel.Depth, ScrollDir);
+    _fishCtrl.Tick(dt, _state, _model.Depth, ScrollDir);
     _bgCtrl.Tick();                                     // 背景贴图循环，放最后
 }
 ```
@@ -174,7 +178,7 @@ private void Update()
 `GameMgr` 是**组合根**：创建控制器、把 `HookController` 绑给 `HookView`、订阅"教程结束"事件，
 其余 MonoBehaviour 都是表现层。它自己不做 `Find`、不做运行时 `AddComponent`；
 唯一会自动补组件的地方是 `FishView`（给鱼补 kinematic `Rigidbody` 和 `FishHang`，
-省得去改 9 个预制体）。
+省得去改 9 个预制体）。对外只暴露 `IFishStateSource`（鱼）和 `HookRoot`（钩子）两个只读入口。
 
 ### 事件总线（`EventMgr` + `GameEvent`）
 
@@ -247,7 +251,7 @@ GuideHook / GuideBG（z≈200 的独立布景，和主游戏互不干扰）
 - `TutorialDirector` 用一段协程序列摆拍：钩子左右滑 → 下潜撞鱼扣氧气 → 上浮抓三条鱼。
   **"什么时候撞上"是算出来的**（鱼的出场时刻 = 相遇时刻 − 游泳耗时），所以调参数不会错位、一次就能演对。
 - 道具鱼 `TutorialFishView` 会在 `Awake` 里把自己身上的 `FishView`/`FishHang` 关掉，
-  绝不去注册真游戏的鱼槽位；扇形展开复用 `FishHang.FanAngle`，观感和实机一致。
+  绝不去注册真游戏的鱼槽位；扇形展开与"绕嘴旋转"复用同一套 `HangMath`，观感和实机一致。
 - `TutorialPanel` 运行时按面板尺寸创建 `RenderTexture`，面板是 Overlay Canvas，
   所以取景相机**不会拍到面板自己**，也不会有递归画面。
 

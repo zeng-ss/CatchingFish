@@ -19,7 +19,7 @@ namespace Controller
     ///   `_freeIds`    空闲 id 队列，回收的 id 立刻能被下一条鱼复用
     ///   `_pendingIds` 待认领队列，控制层先备好数据，表现对象出生时按顺序来领
     /// </summary>
-    public class FishController
+    public class FishController : IFishStateSource
     {
         private readonly FishSpawner _spawner;
         private readonly GameConfig _cfg;

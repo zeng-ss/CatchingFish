@@ -7,11 +7,10 @@ namespace View
     /// <summary>
     /// 【表现层】一条鱼。
     ///
-    /// 依赖方向 View → Controller：
-    ///   ① 自己被启用时去控制层**领一个槽位 id**（`Register`）；
+    /// 依赖方向 View → Controller，而且**只依赖 `IFishStateSource` 这个接口**：
+    ///   ① 自己被启用时认领一个槽位 id（`Register`）；
     ///   ② 之后每帧按 id 把状态**拉**回来贴到 Transform 上（`Get`）；
     ///   ③ 控制层说这条鱼没了（返回 null），自己回对象池（`Release`）。
-    /// 控制层全程不知道 View 的存在，两边只靠 id 关联。
     /// </summary>
     [DisallowMultipleComponent]
     public class FishView : MonoBehaviour
@@ -19,7 +18,7 @@ namespace View
         /// <summary>控制层分配的槽位 id；Trigger 回调时用它告诉控制层碰到了哪条鱼。</summary>
         public int Id => _id;
 
-        private FishController _controller;
+        private IFishStateSource _fish;
         private int _id = -1;
         private Quaternion _faceRight, _faceLeft;
         private int _appliedDirection;
@@ -42,29 +41,29 @@ namespace View
         {
             _appliedDirection = 0;
             _id = -1;
-            _controller = GameMgr.Instance != null ? GameMgr.Instance.FishCtrl : null;
+            _fish = GameMgr.Instance != null ? GameMgr.Instance.FishCtrl : null;
         }
 
         private void OnDisable()
         {
-            if (_id >= 0) _controller?.Unregister(_id);
+            if (_id >= 0) _fish?.Unregister(_id);
             _id = -1;
-            _controller = null;
+            _fish = null;
         }
 
         private void Update()
         {
-            if (_controller == null) return;
+            if (_fish == null) return;
 
             // 槽位要在 Update 里领而不是 OnEnable：对象池预热时 Instantiate 会同步触发 OnEnable，
             // 那一刻还没有待认领的鱼，在 OnEnable 里领会把别的鱼的数据抢过来
-            if (_id < 0) _id = _controller.Register(transform.position, MeasureSize());
+            if (_id < 0) _id = _fish.Register(transform.position, MeasureSize());
             if (_id < 0) return;
 
-            FishRuntime state = _controller.Get(_id);
+            FishRuntime state = _fish.Get(_id);
             if (state == null)
             {
-                _controller.Release(_id, gameObject); // 控制层已回收，自己回池
+                _fish.Release(_id, gameObject); // 控制层已回收，自己回池
                 return;
             }
 

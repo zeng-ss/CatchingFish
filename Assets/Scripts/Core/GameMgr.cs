@@ -16,7 +16,7 @@ namespace Core
     ///   ② 每帧按固定顺序驱动它们；
     ///   ③ 维护状态机，在状态切换时把结果广播出去。
     ///
-    /// MVC 依赖方向（代码里严格保持）：
+    /// MVC 依赖方向：
     ///     Model ◄── Controller ◄── View          Controller 持有 Model，View 持有 Controller
     ///     View  ──► Controller（每帧自己"拉"状态）   Controller 从不引用、不写任何 View
     /// 所以这里的 View 引用只有两个：场景里的 `hookView`，以及通过事件往来的 HUD / 面板。
@@ -45,8 +45,10 @@ namespace Core
         private bool _camMovedToPlay;
         private bool _camMovedBack;
 
-        /// <summary>表现层按 id 来"拉"鱼的状态用。</summary>
-        public FishController FishCtrl => _fishCtrl;
+        /// <summary>
+        /// 表现层按 id 来"拉"鱼的状态用。
+        /// </summary>
+        public IFishStateSource FishCtrl => _fishCtrl;
 
         /// <summary>鱼钩根节点 —— 表现层把抓到的鱼挂到它下面时用。</summary>
         public Transform HookRoot => hookView != null ? hookView.transform : null;
