@@ -27,6 +27,7 @@ namespace Core
         private Transform worldRoot;
 
         [SerializeField] private HookView hookView;
+        [SerializeField] private BgSizeConfig bgSizeConfig;
 
         [Tooltip("开场是否先播玩法教程（点 [开始游戏] 之后才进 Ready）")] [SerializeField]
         private bool playTutorial = true;
@@ -72,6 +73,8 @@ namespace Core
             _cam = cam;
             Transform bgTiles = worldRoot != null ? worldRoot.Find("bgs") : null;
             Transform fishRoot = worldRoot != null ? worldRoot.Find("fishs") : null;
+            Transform headImg = worldRoot != null ? worldRoot.Find("head") : null;
+            ApplyOrientationScale(bgTiles, headImg);
 
             // 控制层只依赖 Model 和彼此，不认识任何 View
             _bgCtrl = new BGController(worldRoot, bgTiles, cam);
@@ -90,6 +93,29 @@ namespace Core
 
             // 教程面板点 [开始游戏] 之后才真正开局：两边只走事件，谁也不持有谁
             EventMgr.Subscribe(GameEvent.TutorialStartGame, OnTutorialStartGame);
+        }
+
+        private void ApplyOrientationScale(Transform bgTiles, Transform headImg)
+        {
+            bool isLandscape = Screen.width > Screen.height;
+
+            float bgScaleX = isLandscape
+                ? bgSizeConfig.bgSizes[0].hScale
+                : bgSizeConfig.bgSizes[0].pScale;
+
+            float headScaleX = isLandscape
+                ? bgSizeConfig.bgSizes[1].hScale
+                : bgSizeConfig.bgSizes[1].pScale;
+
+            SetScaleX(bgTiles.transform, bgScaleX);
+            SetScaleX(headImg.transform, headScaleX);
+        }
+
+        private void SetScaleX(Transform target, float x)
+        {
+            var scale = target.localScale;
+            scale.x = x;
+            target.localScale = scale;
         }
 
         private void Start()
