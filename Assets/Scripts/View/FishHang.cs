@@ -209,13 +209,5 @@ namespace View
                 return _mouth;
             }
         }
-
-        private void OnDrawGizmosSelected()
-        {
-            if (Mouth == null) return;
-
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(Mouth.position, 0.08f);
-        }
     }
 }

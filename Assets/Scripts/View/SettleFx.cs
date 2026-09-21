@@ -31,7 +31,7 @@ namespace View
         private float riseDistance = 1.6f;
 
         [SerializeField] private int fontSize = 44;
-        [SerializeField] private Color textColor = new Color(1f, 0.86f, 0.35f);
+        [SerializeField] private Color textColor = Color.green;
 
         private SettlePayload _settle;
         private float _waitTimer;
