@@ -65,7 +65,7 @@ namespace Core
             base.Awake();
             if (Instance != this) return;
 
-            QualitySettings.vSyncCount = 0; Application.targetFrameRate = 60; QualitySettings.SetQualityLevel(0);
+            QualitySettings.vSyncCount = 0; Application.targetFrameRate = 60;
             _cfg = GameConfig.Get();
             _model = new GameModel();
             _input = new InputController();
